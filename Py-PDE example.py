@@ -11,8 +11,10 @@ grid = CartesianGrid([[-5, 5]], 64)  # generate grid
 field = ScalarField(grid, 1)  # generate initial condition
 
 storage = MemoryStorage()  # store intermediate information of the simulation
-res = eq.solve(field, 100, dt=1e-3, tracker=storage.tracker(1))  # solve the PDE
+res = eq.solve(field, 10, dt=1e-3, tracker=storage.tracker(1))  # solve the PDE
+
+times = [time for time, _ in storage.items()]
+print("Times:", times)
 
 plot_kymograph(storage)  # visualize the result in a space-time plot
 
-# print("JAGKJFHASKFJHASFKH")
