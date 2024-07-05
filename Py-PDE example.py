@@ -21,17 +21,26 @@
 
 from pde import DiffusionPDE, ScalarField, UnitGrid
 
-grid = UnitGrid([32, 32], periodic=[False, True])  # generate grid
+grid = UnitGrid([32, 32], periodic=[True, True])  # generate grid
 state = ScalarField.random_uniform(grid, 0.2, 0.3)  # generate initial condition
 
-field = ScalarField.from_expression(grid, "x")
+field = ScalarField.from_expression(grid, "x+2*y")
 
 
 # set boundary conditions `bc` for all axes
 
-bc_x = "dirichlet"
+bc_x = "periodic"
 bc_y = "periodic"
 eq = DiffusionPDE(bc=[bc_x, bc_y])
 
 result = eq.solve(field, t_range=10, dt=0.005)
 result.plot()
+
+
+
+
+    # Plot the results:
+    # Decimal precision from dt.
+    # decimalPlaces = 0
+    # if dt < 1:
+    #     decimalPlaces = len(str(dt)) - 2
