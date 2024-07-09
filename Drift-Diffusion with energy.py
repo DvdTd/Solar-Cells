@@ -6,39 +6,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
-
-# Variables
-dt = 1e-1
-maxTime = 1e1
-energyRange = [-3, 3] # ±infinity but cutoff when it goes to zero
-positionRange = [-3, 3] # solar cell about 10cm
-numEnergyPoints = 70
-numPositionPoints = 70
-
-dimension = 1 # accepts 1 or 2
-F = np.array([1e5]) # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
-numPlots = 10 # Number of plots, setting to 0 gives all
-maxGraphsPerRow = 5
-
-taskType = "timeEvo" # Options: timeEvo, gridSearch
-plotType = "mesh" # Used for timeEvo, options: mesh, colour2d, final
-
-
-# Select initial field
-# initialField = "x"
-# initialField = f"cos(2*{np.pi}/{positionRange[1]}*y)"
-# initialField = f"{np.e}**(-(x-{energyRange[1] - energyRange[0]}/2)**2/{energyRange[1] - energyRange[0]}**2)"
-# initialField = "heaviside(x, 0)*(x)"
-# initialField = "heaviside( -(x)*(x-2), 0)"
-# initialField = f"{np.e}**(-(x-1)**2)"
-
-# initialField = f"cos({np.pi}/({energyRange[1]} - {energyRange[0]})*x)*cos({np.pi}/({positionRange[1]} - {positionRange[0]})*y)"
-# initialField = f"cos(2*{np.pi}/({positionRange[1]} - {positionRange[0]})*y)"
-# initialField = f"{np.e}**(-(x)**2/30-(y)**2)"
-initialField = f"{np.e}**(-(y)**2)"
-# initialField = f"(x-{energyRange[0]})*(x-{energyRange[1]})*(y-{positionRange[0]})*(y-{positionRange[1]})"
-
-
 # Constants
 kb = 1.3806e-23
 eCharge = 1.602e-19
@@ -48,10 +15,36 @@ g1 = 1
 sigma = 0.1 # Gaussian width of g2(e) - Tress p55 5e-2eV?, p51 0.05->0.15 eV, Traps p5 0.13eV
 Ec = 0 # Gaussian centre of g2(e) - Traps p5 -5.2eV although just offsets all energy
 Lambda = 9e-5 # 1e-3 # Tress p114, 1e-2 to 1e-4 (cm/V)^(1/2) CHECK AS CM, 9e-6 or 9e-5eV Alexandros
-T = 300 # temperature, 300 Tress p63, why so cold? or p92 273+25 = 398, Traps p5 also 300
+T = 300 # temperature, 300 Tress p63, Traps p5 also 300
 # p104? chemical potential with a distance of 0.5 eV (T = 300 K) away from the center of the Gaussian DOS
 # reorganisation energy, Tress p61 - "dissociation mechanism of this state with binding energies between 0.2 and 0.5 eV is still unclear"
 # p146 1.5e22 cm−3s−1 optical generation rate
+
+# Variables
+dt = 5e-10
+maxTime = 5e-6
+energyRange = [-1, 1] # ±infinity but cutoff when it goes to zero
+positionRange = [-10, 10] # solar cell about 10cm
+numEnergyPoints = 200
+numPositionPoints = 150
+
+dimension = 1 # accepts 1 or 2
+F = np.array([1e4]) # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
+numPlots = 10 # Number of plots, setting to 0 gives all
+maxGraphsPerRow = 5
+
+taskType = "timeEvo" # Options: timeEvo, gridSearch
+plotType = "mesh" # Used for timeEvo, options: mesh, colour2d, final
+
+
+# Select initial field
+# initialField = f"{np.e}**(-(x-1)**2)"
+
+# initialField = f"cos(2*{np.pi}/({positionRange[1]} - {positionRange[0]})*y)"
+initialField = f"{np.e}**(-(x)**2/30-(y)**2)"
+# initialField = f"{np.e}**(-(y)**2)"
+# initialField = f"(x-{energyRange[0]})*(x-{energyRange[1]})*(y-{positionRange[0]})*(y-{positionRange[1]})"
+
 
 
 def calculatePDE(dt=dt, F = F, sigma=sigma, Lambda=Lambda):
@@ -65,21 +58,23 @@ def calculatePDE(dt=dt, F = F, sigma=sigma, Lambda=Lambda):
 
     if dimension == 1:
         dotGradTerm = f"{F[0]} * d_dy(n)" 
-        laplaceTerm = "d_dy(d_dy(n))"
+        # laplaceTerm = "d_dy(d_dy(n))"
+        laplaceTerm = "d2_dy2(n)"
     else: # == 2
         dotGradTerm = f"{F[0]} * d_dy(n) + {F[1]} * d_dz(n)" 
-        laplaceTerm = "d_dy(d_dy(n)) + d_dz(d_dz(n))"
+        # laplaceTerm = "d_dy(d_dy(n)) + d_dz(d_dz(n))"
+        laplaceTerm = "d2_dy2(n) + d2_dz2(n)"
 
-    bc_x =  "dirichlet" # what BCs show energy have? 0 density at 0 energy? dirichlet or neumann, ["dirichlet", "dirichlet"]
-    bc_y =  "periodic" # [{"value": "0"}, {"value": "0"}]
-    eq = pde.PDE({"n": f"{factor} * ( {K[dimension-1]}*{beta}/2*{dotGradTerm} + {K[dimension-1]}/2*{laplaceTerm} - {C[dimension-1]}*{EBar}*d_dx(n) + {C[dimension-1]}*({EBar}**2 + 2*{Lambda}*{sigma}**2/{beta}*{sigmaTilde}**(-2))*d_dx(d_dx(n)) )"}, bc=[bc_x, bc_y])               
-    grid = pde.CartesianGrid([energyRange, positionRange], [numEnergyPoints,numPositionPoints], periodic=[False, True])
+    bc_x =  "dirichlet"
+    bc_y =  "neumann" 
+    eq = pde.PDE({"n": f"{factor} * ( {K[dimension-1]}*{beta}/2*{dotGradTerm} + {K[dimension-1]}/2*{laplaceTerm} - {C[dimension-1]}*{EBar}*d_dx(n) + {C[dimension-1]}*({EBar}**2 + 2*{Lambda}*{sigma}**2/{beta}*{sigmaTilde}**(-2))*d2_dx2(n) )"}, bc=[bc_x, bc_y])               
+    grid = pde.CartesianGrid([energyRange, positionRange], [numEnergyPoints,numPositionPoints], periodic=[False, False])
 
     # Initial field
     state = pde.ScalarField.from_expression(grid, initialField + f"* heaviside( -(x-{energyRange[0]})*(x-{energyRange[1]}), 0) * heaviside( -(y-{positionRange[0]})*(y-{positionRange[1]}), 0) ")
 
-    storage = pde.MemoryStorage() # store intermediate information of the simulation
-    res = eq.solve(state, t_range=maxTime, dt=dt, tracker=["progress", storage.tracker(dt)])  # solve the PDE
+    storage = pde.MemoryStorage()
+    res = eq.solve(state, t_range=maxTime, dt=dt, tracker=["progress", storage.tracker(dt)])
     return res, storage
 
 
@@ -108,9 +103,9 @@ if taskType == "timeEvo":
             i+=1
 
     # Decimal precision from dt.
-    decimalPlaces = 0
-    if dt < 1:
-        decimalPlaces = len(str(dt)) - 2
+    # decimalPlaces = 0
+    # if dt < 1:
+    #     decimalPlaces = len(str(dt)) - 2
 
     # Plot graphs
     columns = min(length, maxGraphsPerRow)
@@ -127,8 +122,8 @@ if taskType == "timeEvo":
                 # print(field.data)
                 ax.plot_surface(X, Y, field.data.T, cmap=cm.coolwarm)
                 ax.set_box_aspect(aspect=None, zoom=0.9)
-                ax.set(xlabel="Energy", ylabel="Position", zlabel="", title=f"n, time = {round(time, decimalPlaces)}s")
-                numGraph += 1
+                ax.set(xlabel="Energy", ylabel="Position", zlabel="", title=f"n, time = {time:.2e}s")
+                numGraph += 1 
 
     elif plotType == "colour2d":
         fig, axs = plt.subplots(nrows=rows, ncols=columns, sharex=True, sharey=True, figsize=(4.5*columns+1,2.5*rows))
@@ -136,7 +131,6 @@ if taskType == "timeEvo":
 
         # Removes extra axes
         for removingIndex in range(columns-1 - (numPlots-1)%maxGraphsPerRow):
-            # print(rows-1, columns - removingIndex - 1)
             axs[rows-1, columns - removingIndex - 1].remove()
 
         numGraph = 0
@@ -155,8 +149,8 @@ if taskType == "timeEvo":
                     ax = axs[gridRow, gridColumn]
 
                 plot = ax.pcolor(energies, positions, field.data.T, cmap=cm.viridis)
-                ax.set(xlabel="Energy", ylabel="Position", title=f"Time = {round(time, decimalPlaces)}s")
-                fig.colorbar(plot, ax=ax) #, format='%.1e'
+                ax.set(xlabel="Energy", ylabel="Position", title=f"n, time = {time:.2e}s")
+                fig.colorbar(plot, ax=ax)
 
                 numGraph += 1
 
@@ -187,8 +181,8 @@ if taskType == "gridSearch":
     # Two parameters to vary in a grid
     parameterData = [{"name": "dt", "range": [-1.7, 0], "numPoints": 6, "defaultValue": 1e-1, "isLog": True},
                      {"name": "F", "range": [1e5, 1e6], "numPoints": 6, "defaultValue": 1e5, "isLog": False},
-                     {"name": "σ", "range": [0.02, 0.20], "numPoints": 3, "defaultValue": 0.13, "isLog": False},
-                     {"name": "λ", "range": [-0, -6], "numPoints": 2, "defaultValue": 9e-5, "isLog": True}] #[-0, -6]
+                     {"name": "sigma", "range": [0.02, 0.20], "numPoints": 3, "defaultValue": 0.13, "isLog": False},
+                     {"name": "λ", "range": [-0, -6], "numPoints": 2, "defaultValue": 9e-5, "isLog": True}]
     
     # Set parameters:
     chosenDataIndices = [2, 3]
@@ -252,7 +246,7 @@ if taskType == "gridSearch":
                     # dt, F, sigma, lambda, timeBeforeNaN
                     output.append([val0, val1, val2, val3, timeBeforeNaN])
 
-                # WORK IN PROGRESS
+                    # graph: WORK IN PROGRESS
                     if shouldPlotGrid == True and numChosen == 2:
                         indices = [i0, i1, i2, i3]
                         X, Y = np.meshgrid(energies, positions)

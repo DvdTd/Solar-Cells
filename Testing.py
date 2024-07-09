@@ -28,3 +28,9 @@ list1 = [[1,2],[2,3],[1,1]]
 
 # print(max([1,2,3, np.nan]))
 
+
+    # Plot the results:
+    # Decimal precision from dt.
+    # decimalPlaces = 0
+    # if dt < 1:
+    #     decimalPlaces = len(str(dt)) - 2
