@@ -34,3 +34,10 @@ list1 = [[1,2],[2,3],[1,1]]
     # decimalPlaces = 0
     # if dt < 1:
     #     decimalPlaces = len(str(dt)) - 2
+
+import fipy as fp
+baseMesh = fp.Grid2D(dx = 1.0, dy = 1.0, nx = 2, ny = 2)
+print(baseMesh.cellCenters)
+
+translatedMesh = baseMesh + ((5,), (10,))
+print(translatedMesh.cellCenters)
