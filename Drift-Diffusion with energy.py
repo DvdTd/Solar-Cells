@@ -5,6 +5,9 @@ import pde # import from installing py-pde
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
+import os
+import h5py
+
 
 # Constants
 kb = 1.3806e-23
@@ -12,42 +15,62 @@ eCharge = 1.602e-19
 gamma = 0.788 # Bilayers p8 0.788
 nu0 = 1
 g1 = 1
-sigma = 0.1 # Gaussian width of g2(e) - Tress p55 5e-2eV?, p51 0.05->0.15 eV, Traps p5 0.13eV
-Ec = 0 # Gaussian centre of g2(e) - Traps p5 -5.2eV although just offsets all energy
-Lambda = 9e-5 # 1e-3 # Tress p114, 1e-2 to 1e-4 (cm/V)^(1/2) CHECK AS CM, 9e-6 or 9e-5eV Alexandros
-T = 300 # temperature, 300 Tress p63, Traps p5 also 300
-# p104? chemical potential with a distance of 0.5 eV (T = 300 K) away from the center of the Gaussian DOS
-# reorganisation energy, Tress p61 - "dissociation mechanism of this state with binding energies between 0.2 and 0.5 eV is still unclear"
-# p146 1.5e22 cm−3s−1 optical generation rate
+sigma = 0.1 # Tress p51 0.05->0.15 eV
+Ec = 0 # Traps p5 -5.2eV although just offsets all energy
+Lambda = 9e-5 # 9e-6 or 9e-5eV Alexandros
+T = 300 # Tress p63 300K
 
-# Variables
-dt = 5e-10
-maxTime = 5e-6
+dt = 5e-12
+maxTime = 2e-7
 energyRange = [-1, 1] # ±infinity but cutoff when it goes to zero
 positionRange = [-10, 10] # solar cell about 10cm
-numEnergyPoints = 200
-numPositionPoints = 150
+numEnergyPoints = 100
+numPositionPoints = 100
 
 dimension = 1 # accepts 1 or 2
-F = np.array([1e4]) # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
-numPlots = 10 # Number of plots, setting to 0 gives all
+F = np.array([1e5]) # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
+numPlots = 2 # Number of plots, setting to 0 gives all
 maxGraphsPerRow = 5
 
-taskType = "timeEvo" # Options: timeEvo, gridSearch
+taskType = "timeEvo" # Options: timeEvo, gridSearch, longEvo
 plotType = "mesh" # Used for timeEvo, options: mesh, colour2d, final
 
 
 # Select initial field
-# initialField = f"{np.e}**(-(x-1)**2)"
-
-# initialField = f"cos(2*{np.pi}/({positionRange[1]} - {positionRange[0]})*y)"
-initialField = f"{np.e}**(-(x)**2/30-(y)**2)"
+# initialField = f"{np.e}**(-(x)**2/30-(y)**2)"
 # initialField = f"{np.e}**(-(y)**2)"
-# initialField = f"(x-{energyRange[0]})*(x-{energyRange[1]})*(y-{positionRange[0]})*(y-{positionRange[1]})"
+# initialField = f"cos(2*{np.pi}/({positionRange[1]} - {positionRange[0]})*y)"
+initialField = f"( {np.e}**(-(x)**2/2) - {np.e}**(-({energyRange[0]})**2/2) ) * ( (y - {positionRange[0]}) / ({positionRange[1]} - {positionRange[0]})  )"
 
+shouldReadFile = False
+shouldWriteFile = False
 
+fileName = "longEvolutionData.hdf5"
+current_dir = os.path.dirname(__file__)
+filePath = os.path.join(current_dir, fileName)
+# print("file path:", filePath)
 
-def calculatePDE(dt=dt, F = F, sigma=sigma, Lambda=Lambda):
+# Ensure the same constants are used over multiple runs
+if shouldReadFile:
+    kb = 1.3806e-23
+    eCharge = 1.602e-19
+    gamma = 0.788 
+    nu0 = 1
+    g1 = 1
+    sigma = 0.1 
+    Ec = 0
+    Lambda = 9e-5 
+    T = 300
+    dt = 5e-12
+    maxTime = 2e-8
+    energyRange = [-1, 1]
+    positionRange = [-10, 10] 
+    numEnergyPoints = 100
+    numPositionPoints = 100
+    dimension = 1
+    F = np.array([1e6])
+
+def calculatePDE(dt=dt, F = F, sigma=sigma, Lambda=Lambda, shouldReadFile=False):
     K = [1/4*gamma**(-3), 3*np.pi/8*gamma**(-4), np.pi*gamma**(-5)]
     C = [gamma**(-1), np.pi/2*gamma**(-2), np.pi*gamma**(-3)]
     beta = 1/(kb*T) * eCharge # multiply by charge to get eV units
@@ -58,11 +81,9 @@ def calculatePDE(dt=dt, F = F, sigma=sigma, Lambda=Lambda):
 
     if dimension == 1:
         dotGradTerm = f"{F[0]} * d_dy(n)" 
-        # laplaceTerm = "d_dy(d_dy(n))"
         laplaceTerm = "d2_dy2(n)"
     else: # == 2
         dotGradTerm = f"{F[0]} * d_dy(n) + {F[1]} * d_dz(n)" 
-        # laplaceTerm = "d_dy(d_dy(n)) + d_dz(d_dz(n))"
         laplaceTerm = "d2_dy2(n) + d2_dz2(n)"
 
     bc_x =  "dirichlet"
@@ -70,18 +91,42 @@ def calculatePDE(dt=dt, F = F, sigma=sigma, Lambda=Lambda):
     eq = pde.PDE({"n": f"{factor} * ( {K[dimension-1]}*{beta}/2*{dotGradTerm} + {K[dimension-1]}/2*{laplaceTerm} - {C[dimension-1]}*{EBar}*d_dx(n) + {C[dimension-1]}*({EBar}**2 + 2*{Lambda}*{sigma}**2/{beta}*{sigmaTilde}**(-2))*d2_dx2(n) )"}, bc=[bc_x, bc_y])               
     grid = pde.CartesianGrid([energyRange, positionRange], [numEnergyPoints,numPositionPoints], periodic=[False, False])
 
-    # Initial field
-    state = pde.ScalarField.from_expression(grid, initialField + f"* heaviside( -(x-{energyRange[0]})*(x-{energyRange[1]}), 0) * heaviside( -(y-{positionRange[0]})*(y-{positionRange[1]}), 0) ")
+    # Initial field 
+    if not shouldReadFile:
+        state = pde.ScalarField.from_expression(grid, initialField)
+    else:
+        # if not os.path.isfile(filePath):
+        #     raise FileNotFoundError(f"The file {filePath} does not exist.")
+        # try:
+        #     with h5py.File(filePath, "r") as f:
+        #         print(f"File {filePath} is a valid HDF5 file.")
+        # except OSError as e:
+        #     raise OSError(f"Error opening file {filePath}: {e}")
+        # pde.FileStorage(filePath, write_mode="truncate")
+        reader = pde.FileStorage(filePath, write_mode="read_only")
+        print(type(reader))
+        pde.plot_kymographs(reader)
+        state = pde.ScalarField.from_file(filePath)
 
     storage = pde.MemoryStorage()
+    # writer = pde.FileStorage(path.name, write_mode="truncate")
     res = eq.solve(state, t_range=maxTime, dt=dt, tracker=["progress", storage.tracker(dt)])
+    # if shouldWriteFile:
+    #     writer = pde.FileStorage(path.name, write_mode="truncate")
     return res, storage
 
 
 # Main
 
-if taskType == "timeEvo":
-    res, storage = calculatePDE()
+if taskType == "timeEvo" or taskType == "longEvo":
+    if not shouldReadFile: # CAN simplfy this
+        res, storage = calculatePDE()
+    else:
+        res, storage = calculatePDE(shouldReadFile=True)
+
+    # if shouldWriteFile:
+    #     res.data.T.tofile(filePath)
+
     energies = np.linspace(energyRange[0], energyRange[1], numEnergyPoints)
     positions = np.linspace(positionRange[0], positionRange[1], numPositionPoints)
     times = [time for time, _ in storage.items()]
@@ -102,11 +147,6 @@ if taskType == "timeEvo":
             desiredTimes[i] = times[j]
             i+=1
 
-    # Decimal precision from dt.
-    # decimalPlaces = 0
-    # if dt < 1:
-    #     decimalPlaces = len(str(dt)) - 2
-
     # Plot graphs
     columns = min(length, maxGraphsPerRow)
     rows = int(np.ceil(length/5))
@@ -119,7 +159,6 @@ if taskType == "timeEvo":
         for time, field in storage.items():
             if time in desiredTimes:
                 ax = fig.add_subplot(rows, columns, numGraph, projection='3d')
-                # print(field.data)
                 ax.plot_surface(X, Y, field.data.T, cmap=cm.coolwarm)
                 ax.set_box_aspect(aspect=None, zoom=0.9)
                 ax.set(xlabel="Energy", ylabel="Position", zlabel="", title=f"n, time = {time:.2e}s")
@@ -166,17 +205,10 @@ if taskType == "timeEvo":
     plt.show()
 
 
-if taskType == "gridSearch":
+if taskType == "gridSearch": # NEED TO CHANGE dt TO CLOSER TO 1e-9
     energies = np.linspace(energyRange[0], energyRange[1], numEnergyPoints)
     positions = np.linspace(positionRange[0], positionRange[1], numPositionPoints)
     X, Y = np.meshgrid(energies, positions)
-    
-    # dt = 1e-1
-    # F = np.array([-1e5]) # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
-    # sigma = 0.13 # Gaussian width of g2(e) - Tress p55 50meV = 0.05?, p51 50-150meV, Traps p5 0.13eV
-    # Lambda = 0.1e-3 # 1e-3 # Tress p114, 1e-2 to 1e-4 (cm/V)^(1/2) CHECK AS CM
-    # resultsGrid = np.zeros((numDts, numSigmas)) # resultsGrid[dtIndex][sigmaIndex]
-
     
     # Two parameters to vary in a grid
     parameterData = [{"name": "dt", "range": [-1.7, 0], "numPoints": 6, "defaultValue": 1e-1, "isLog": True},

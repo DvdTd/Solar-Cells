@@ -2,42 +2,40 @@ import pde
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import numpy as np
-
-# fig, axs = plt.subplots(nrows=1, ncols=15, sharex=True, sharey=True, figsize=(15,15))
-# fig.subplots_adjust(hspace = .5, wspace=.001)
-
-# axs = axs.ravel()
-# print(axs)
-
-
-# for i in range(7):
-#     print(i,"graphs:", 5-1-(i-1)%5)
-
-def sortSecond(val):
-    return val[1] 
- 
-# list1 to demonstrate the use of sorting 
-# using second key 
-list1 = [[1,2],[2,3],[1,1]]
- 
- 
-# sorts the array in descending according to
-# second element
-# list1.sort(key=lambda x: x[1],reverse=True)
-# print(list1)
-
-# print(max([1,2,3, np.nan]))
-
-
-    # Plot the results:
-    # Decimal precision from dt.
-    # decimalPlaces = 0
-    # if dt < 1:
-    #     decimalPlaces = len(str(dt)) - 2
-
 import fipy as fp
-baseMesh = fp.Grid2D(dx = 1.0, dy = 1.0, nx = 2, ny = 2)
-print(baseMesh.cellCenters)
 
-translatedMesh = baseMesh + ((5,), (10,))
-print(translatedMesh.cellCenters)
+
+# examples.convection.exponential1DSource.mesh1D from 
+# https://www.ctcms.nist.gov/fipy/examples/convection/generated/examples.convection.exponential1DSource.mesh1D.html
+
+diffCoeff = 1.
+convCoeff = (10.,)
+sourceCoeff = 1.
+from fipy import CellVariable, Grid1D, DiffusionTerm, ExponentialConvectionTerm, DefaultAsymmetricSolver, Viewer
+from fipy.tools import numerix
+nx = 1000
+L = 10.
+mesh = Grid1D(dx=L / 1000, nx=nx)
+valueLeft = 0.
+valueRight = 1.
+var = CellVariable(name="variable", mesh=mesh)
+var.constrain(valueLeft, mesh.facesLeft)
+var.constrain(valueRight, mesh.facesRight)
+eq = (DiffusionTerm(coeff=diffCoeff)+ ExponentialConvectionTerm(coeff=convCoeff)+ sourceCoeff)
+eq.solve(var=var,solver=DefaultAsymmetricSolver(tolerance=1.e-15, iterations=10000))
+axis = 0
+x = mesh.cellCenters[axis]
+AA = -sourceCoeff * x / convCoeff[axis]
+BB = 1. + sourceCoeff * L / convCoeff[axis]
+CC = 1. - numerix.exp(-convCoeff[axis] * x / diffCoeff)
+DD = 1. - numerix.exp(-convCoeff[axis] * L / diffCoeff)
+analyticalArray = AA + BB * CC / DD
+print(var.allclose(analyticalArray, rtol=1e-4, atol=1e-4))
+
+# viewer = Viewer(vars=var)
+# viewer.plot()
+
+# ADDED AS VIEWER NOT WORKING
+plt.plot(mesh.x, var)
+plt.show()
+
