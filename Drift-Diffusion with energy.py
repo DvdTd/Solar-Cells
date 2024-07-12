@@ -6,7 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import os
-import h5py
+import json
+
 
 
 # Constants
@@ -20,57 +21,91 @@ Ec = 0 # Traps p5 -5.2eV although just offsets all energy
 Lambda = 9e-5 # 9e-6 or 9e-5eV Alexandros
 T = 300 # Tress p63 300K
 
-dt = 5e-12
-maxTime = 2e-7
+#dt = 5e-12, maxTime = 10e-7 semaphore
+dt = 1e-11
+maxTime = 5e-7
 energyRange = [-1, 1] # ±infinity but cutoff when it goes to zero
 positionRange = [-10, 10] # solar cell about 10cm
 numEnergyPoints = 100
 numPositionPoints = 100
 
 dimension = 1 # accepts 1 or 2
-F = np.array([1e5]) # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
-numPlots = 2 # Number of plots, setting to 0 gives all
+F = [1e5] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
+numPlots = 10 # Number of plots, setting to 0 gives all
 maxGraphsPerRow = 5
 
-taskType = "timeEvo" # Options: timeEvo, gridSearch, longEvo
+taskType = "longEvo" # Options: timeEvo, gridSearch, longEvo
 plotType = "mesh" # Used for timeEvo, options: mesh, colour2d, final
 
 
 # Select initial field
 # initialField = f"{np.e}**(-(x)**2/30-(y)**2)"
-# initialField = f"{np.e}**(-(y)**2)"
+initialField = f"{np.e}**(-(y)**2)"
 # initialField = f"cos(2*{np.pi}/({positionRange[1]} - {positionRange[0]})*y)"
-initialField = f"( {np.e}**(-(x)**2/2) - {np.e}**(-({energyRange[0]})**2/2) ) * ( (y - {positionRange[0]}) / ({positionRange[1]} - {positionRange[0]})  )"
+# initialField = f"( {np.e}**(-(x)**2/2) - {np.e}**(-({energyRange[0]})**2/2) ) * ( (y - {positionRange[0]}) / ({positionRange[1]} - {positionRange[0]})  )"
 
-shouldReadFile = False
-shouldWriteFile = False
 
-fileName = "longEvolutionData.hdf5"
+fileName = "longEvolutionData.json"
 current_dir = os.path.dirname(__file__)
 filePath = os.path.join(current_dir, fileName)
-# print("file path:", filePath)
+global json_object
 
-# Ensure the same constants are used over multiple runs
-if shouldReadFile:
-    kb = 1.3806e-23
-    eCharge = 1.602e-19
-    gamma = 0.788 
-    nu0 = 1
-    g1 = 1
-    sigma = 0.1 
-    Ec = 0
-    Lambda = 9e-5 
-    T = 300
-    dt = 5e-12
-    maxTime = 2e-8
-    energyRange = [-1, 1]
-    positionRange = [-10, 10] 
-    numEnergyPoints = 100
-    numPositionPoints = 100
-    dimension = 1
-    F = np.array([1e6])
+# Create new JSON
+shouldForceNewFile = False
+if not os.path.isfile(filePath) or shouldForceNewFile:
+    jsonDict = {
+        "constants": {
+            "kb" : 1.3806e-23,
+            "eCharge" : 1.602e-19,
+            "gamma" : 0.788,
+            "nu0" : 1,
+            "g1" : 1,
+            "sigma" : 0.1,
+            "Ec" : 0 ,
+            "Lambda" : 9e-5 ,
+            "T" : 300,
+            "dt" : 1e-11,
+            "maxTime" : 5e-7,
+            "energyRange" : [-1, 1],
+            "positionRange" : [-10, 10],
+            "numEnergyPoints" : 100,
+            "numPositionPoints" : 100,
+            "dimension" : 1 ,
+            "F" : [1e5]
+        },
+        "cumulativeTime" : 0,
+        "pastResult" : None
+    }
+    json_object = json.dumps(jsonDict, indent=4)
+    with open(filePath, "w") as outfile:
+        outfile.write(json_object)
 
-def calculatePDE(dt=dt, F = F, sigma=sigma, Lambda=Lambda, shouldReadFile=False):
+# read JSON and get constants
+if taskType == "longEvo":
+    with open(filePath, 'r') as openfile:
+        json_object = json.load(openfile)
+    
+    kb = json_object["constants"]["kb"]
+    eCharge = json_object["constants"]["eCharge"]
+    gamma = json_object["constants"]["gamma"]
+    nu0 = json_object["constants"]["nu0"]
+    g1 = json_object["constants"]["g1"]
+    sigma = json_object["constants"]["sigma"]
+    Ec = json_object["constants"]["Ec"]
+    Lambda = json_object["constants"]["Lambda"]
+    T = json_object["constants"]["T"]
+    dt = json_object["constants"]["dt"]
+    maxTime = json_object["constants"]["maxTime"]
+    energyRange = json_object["constants"]["energyRange"]
+    positionRange = json_object["constants"]["positionRange"]
+    numEnergyPoints = json_object["constants"]["numEnergyPoints"]
+    numPositionPoints = json_object["constants"]["numPositionPoints"]
+    dimension = json_object["constants"]["dimension"]
+    F = json_object["constants"]["F"]
+    
+
+
+def calculatePDE(dt=dt, F = F, sigma=sigma, Lambda=Lambda):
     K = [1/4*gamma**(-3), 3*np.pi/8*gamma**(-4), np.pi*gamma**(-5)]
     C = [gamma**(-1), np.pi/2*gamma**(-2), np.pi*gamma**(-3)]
     beta = 1/(kb*T) * eCharge # multiply by charge to get eV units
@@ -82,7 +117,7 @@ def calculatePDE(dt=dt, F = F, sigma=sigma, Lambda=Lambda, shouldReadFile=False)
     if dimension == 1:
         dotGradTerm = f"{F[0]} * d_dy(n)" 
         laplaceTerm = "d2_dy2(n)"
-    else: # == 2
+    else:
         dotGradTerm = f"{F[0]} * d_dy(n) + {F[1]} * d_dz(n)" 
         laplaceTerm = "d2_dy2(n) + d2_dz2(n)"
 
@@ -91,41 +126,24 @@ def calculatePDE(dt=dt, F = F, sigma=sigma, Lambda=Lambda, shouldReadFile=False)
     eq = pde.PDE({"n": f"{factor} * ( {K[dimension-1]}*{beta}/2*{dotGradTerm} + {K[dimension-1]}/2*{laplaceTerm} - {C[dimension-1]}*{EBar}*d_dx(n) + {C[dimension-1]}*({EBar}**2 + 2*{Lambda}*{sigma}**2/{beta}*{sigmaTilde}**(-2))*d2_dx2(n) )"}, bc=[bc_x, bc_y])               
     grid = pde.CartesianGrid([energyRange, positionRange], [numEnergyPoints,numPositionPoints], periodic=[False, False])
 
-    # Initial field 
-    if not shouldReadFile:
-        state = pde.ScalarField.from_expression(grid, initialField)
+    if taskType == "longEvo" and json_object["pastResult"] != None:
+        state = pde.ScalarField.from_state(pde.ScalarField.from_expression(grid, initialField).attributes, np.array(json_object["pastResult"]))
     else:
-        # if not os.path.isfile(filePath):
-        #     raise FileNotFoundError(f"The file {filePath} does not exist.")
-        # try:
-        #     with h5py.File(filePath, "r") as f:
-        #         print(f"File {filePath} is a valid HDF5 file.")
-        # except OSError as e:
-        #     raise OSError(f"Error opening file {filePath}: {e}")
-        # pde.FileStorage(filePath, write_mode="truncate")
-        reader = pde.FileStorage(filePath, write_mode="read_only")
-        print(type(reader))
-        pde.plot_kymographs(reader)
-        state = pde.ScalarField.from_file(filePath)
+        state = pde.ScalarField.from_expression(grid, initialField)
 
     storage = pde.MemoryStorage()
-    # writer = pde.FileStorage(path.name, write_mode="truncate")
     res = eq.solve(state, t_range=maxTime, dt=dt, tracker=["progress", storage.tracker(dt)])
-    # if shouldWriteFile:
-    #     writer = pde.FileStorage(path.name, write_mode="truncate")
+
     return res, storage
+    
+    
+
 
 
 # Main
 
-if taskType == "timeEvo" or taskType == "longEvo":
-    if not shouldReadFile: # CAN simplfy this
-        res, storage = calculatePDE()
-    else:
-        res, storage = calculatePDE(shouldReadFile=True)
-
-    # if shouldWriteFile:
-    #     res.data.T.tofile(filePath)
+if taskType == "timeEvo":
+    res, storage = calculatePDE()
 
     energies = np.linspace(energyRange[0], energyRange[1], numEnergyPoints)
     positions = np.linspace(positionRange[0], positionRange[1], numPositionPoints)
@@ -299,4 +317,62 @@ if taskType == "gridSearch": # NEED TO CHANGE dt TO CLOSER TO 1e-9
     if shouldPlotGrid == True and numChosen == 2:
         plt.show()
 
+if taskType == "longEvo":
+    res, storage = calculatePDE()
+
+    energies = np.linspace(energyRange[0], energyRange[1], numEnergyPoints)
+    positions = np.linspace(positionRange[0], positionRange[1], numPositionPoints)
+    times = [time for time, _ in storage.items()]
+
+    # Plot the results:
+
+    # Limit the number of plots to the maximum.
+    if numPlots > len(times) or numPlots == 0:
+        numPlots = len(times)
+        print("Showing all times")
+
+    # Find evenly space times then round down to the nearest actual time.
+    desiredTimes = np.linspace(0, maxTime, numPlots)
+    length = len(desiredTimes)
+    i=0
+    for j in range(len(times)): 
+        if i<numPlots and desiredTimes[i] <= times[j]:
+            desiredTimes[i] = times[j]
+            i+=1
+
+    # Plot graphs
+    columns = min(length, maxGraphsPerRow)
+    rows = int(np.ceil(length/5))
+    X, Y = np.meshgrid(energies, positions)
+    
+    plotLast = True
+    if plotLast:
+        fig = plt.figure(figsize=(8,8))
+        ax = fig.add_subplot(1, 1, 1, projection='3d')
+        ax.plot_surface(X, Y, res.data.T, cmap=cm.coolwarm)
+        ax.set_box_aspect(aspect=None, zoom=0.9)
+        time = maxTime + json_object["cumulativeTime"]
+        ax.set(xlabel="Energy", ylabel="Position", zlabel="Electron density", title=f"n, time = {time:.2e}s")
+
+    else:
+        numGraph = 1
+        fig = plt.figure(figsize=(3*columns+1,4*rows))
+        for time, field in storage.items():
+            if time in desiredTimes:
+                time += json_object["cumulativeTime"]
+                ax = fig.add_subplot(rows, columns, numGraph, projection='3d')
+                ax.plot_surface(X, Y, field.data.T, cmap=cm.coolwarm)
+                ax.set_box_aspect(aspect=None, zoom=0.9)
+                ax.set(xlabel="Energy", ylabel="Position", zlabel="", title=f"n, time = {time:.2e}s")
+                numGraph += 1
+
+
+    # Update JSON with new time and results
+    json_object["cumulativeTime"] += maxTime
+    json_object["pastResult"] = res.data.tolist()
+
+    with open(filePath, "w") as outfile:
+        json.dump(json_object, outfile)
+    
+    plt.show()
 
