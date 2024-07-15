@@ -9,7 +9,6 @@ import os
 import json
 
 
-
 # Constants
 kb = 1.3806e-23
 eCharge = 1.602e-19
@@ -21,9 +20,11 @@ Ec = 0 # Traps p5 -5.2eV although just offsets all energy
 Lambda = 9e-5 # 9e-6 or 9e-5eV Alexandros
 T = 300 # Tress p63 300K
 
-#dt = 5e-12, maxTime = 10e-7 semaphore
+#dt = 1e-11, maxTime = 5e-7 takes 25 sec
+#dt = 1e-11, maxTime = 5e-6 takes 90 sec
+#dt = 1e-11, maxTime = 5e-5 takes 850 sec = 14 min 12 sec
 dt = 1e-11
-maxTime = 5e-7
+maxTime = 5e-8
 energyRange = [-1, 1] # ±infinity but cutoff when it goes to zero
 positionRange = [-10, 10] # solar cell about 10cm
 numEnergyPoints = 100
@@ -31,12 +32,12 @@ numPositionPoints = 100
 
 dimension = 1 # accepts 1 or 2
 F = [1e5] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
-numPlots = 10 # Number of plots, setting to 0 gives all
+numPlots = 8 # Number of plots, minimum of 1.
 maxGraphsPerRow = 5
 
 taskType = "longEvo" # Options: timeEvo, gridSearch, longEvo
-plotType = "mesh" # Used for timeEvo, options: mesh, colour2d, final
-
+plotType = "colour2d" # Used for timeEvo and longEvo, options: mesh, colour2d
+shouldForceNewFile = False
 
 # Select initial field
 # initialField = f"{np.e}**(-(x)**2/30-(y)**2)"
@@ -45,13 +46,104 @@ initialField = f"{np.e}**(-(y)**2)"
 # initialField = f"( {np.e}**(-(x)**2/2) - {np.e}**(-({energyRange[0]})**2/2) ) * ( (y - {positionRange[0]}) / ({positionRange[1]} - {positionRange[0]})  )"
 
 
+def calculatePDE(dt=dt, F = F, sigma=sigma, Lambda=Lambda):
+    K = [1/4*gamma**(-3), 3*np.pi/8*gamma**(-4), np.pi*gamma**(-5)]
+    C = [gamma**(-1), np.pi/2*gamma**(-2), np.pi*gamma**(-3)]
+    beta = 1/(kb*T) * eCharge # multiply by charge to get eV units
+    sigmaTilde = np.sqrt(sigma**2 + 2*Lambda/beta)
+
+    factor = f"{nu0}*{g1}*(2*{np.pi})**(-1/2)*{sigmaTilde}**(-2) * {np.e}**(-1/2*{sigmaTilde}**(-2) * (x - {Ec} - {Lambda})**2)"
+    EBar = f"{Lambda}*{sigmaTilde}**(-2)*(2/{beta}*(x - {Ec}) + {sigma}**2)"
+
+    if dimension == 1:
+        dotGradTerm = f"{F[0]} * d_dy(n)" 
+        laplaceTerm = "d2_dy2(n)"
+    else:
+        dotGradTerm = f"{F[0]} * d_dy(n) + {F[1]} * d_dz(n)" 
+        laplaceTerm = "d2_dy2(n) + d2_dz2(n)"
+
+    bc_x =  "dirichlet"
+    bc_y =  "neumann" 
+    eq = pde.PDE({"n": f"{factor} * ( {K[dimension-1]}*{beta}/2*{dotGradTerm} + {K[dimension-1]}/2*{laplaceTerm} - {C[dimension-1]}*{EBar}*d_dx(n) + {C[dimension-1]}*({EBar}**2 + 2*{Lambda}*{sigma}**2/{beta}*{sigmaTilde}**(-2))*d2_dx2(n) )"}, bc=[bc_x, bc_y])               
+    grid = pde.CartesianGrid([energyRange, positionRange], [numEnergyPoints,numPositionPoints], periodic=[False, False])
+
+    # Use initial field, or the result of running it in the past.
+    if taskType == "longEvo" and json_object["pastResult"] != None:
+        state = pde.ScalarField.from_state(pde.ScalarField.from_expression(grid, initialField).attributes, np.array(json_object["pastResult"]))
+    else:
+        state = pde.ScalarField.from_expression(grid, initialField)
+
+    storage = pde.MemoryStorage()
+    if numPlots == 1:
+        timeBetweenRecords = maxTime
+    else:
+        timeBetweenRecords = maxTime/(numPlots-1)
+    res = eq.solve(state, t_range=maxTime, dt=dt, tracker=["progress", storage.tracker(timeBetweenRecords)])
+
+    return res, storage
+
+
+def plotGraphs(energies, positions, res, storage, numPlots, plotType, maxGraphsPerRow=5, maxTime=maxTime, taskType=taskType):
+    columns = min(numPlots, maxGraphsPerRow)
+    rows = int(np.ceil(numPlots/5))
+
+    if numPlots == 1:
+        result = [(maxTime, res)]
+    else:
+        result = storage.items()
+
+    if plotType == "mesh":
+        X, Y = np.meshgrid(energies, positions)
+        numGraph = 1
+        fig = plt.figure(figsize=(3*columns+1,4*rows))
+
+        for time, field in result:
+            if taskType == "longEvo":
+                time += json_object["cumulativeTime"] - maxTime
+            ax = fig.add_subplot(rows, columns, numGraph, projection='3d')
+            ax.plot_surface(X, Y, field.data.T, cmap=cm.coolwarm)
+            ax.set_box_aspect(aspect=None, zoom=0.9)
+            ax.set(xlabel="Energy", ylabel="Position", zlabel="", title=f"n, time = {time:.2e}s")
+            numGraph += 1 
+
+    elif plotType == "colour2d":
+        fig, axs = plt.subplots(nrows=rows, ncols=columns, sharex=True, sharey=True, figsize=(4.5*columns+1,2.5*rows))
+
+        # Removes extra axes
+        for removingIndex in range(columns-1 - (numPlots-1)%maxGraphsPerRow):
+            axs[rows-1, columns - removingIndex - 1].remove()
+
+        numGraph = 0
+
+        for time, field in storage.items():
+            if taskType == "longEvo":
+                time += json_object["cumulativeTime"] - maxTime
+
+            gridRow = numGraph//maxGraphsPerRow
+            gridColumn = numGraph%maxGraphsPerRow
+
+            # axs has different dimensions depending on the number of graphs.
+            if columns == 1:
+                ax = axs
+            elif rows == 1:
+                ax = axs[gridColumn]
+            else:
+                ax = axs[gridRow, gridColumn]
+
+            plot = ax.pcolor(energies, positions, field.data.T, cmap=cm.viridis)
+            ax.set(xlabel="Energy", ylabel="Position", title=f"n, time = {time:.2e}s")
+            fig.colorbar(plot, ax=ax)
+
+            numGraph += 1
+
+    plt.show()
+    
+    
 fileName = "longEvolutionData.json"
 current_dir = os.path.dirname(__file__)
 filePath = os.path.join(current_dir, fileName)
-global json_object
 
 # Create new JSON
-shouldForceNewFile = False
 if not os.path.isfile(filePath) or shouldForceNewFile:
     jsonDict = {
         "constants": {
@@ -102,46 +194,10 @@ if taskType == "longEvo":
     numPositionPoints = json_object["constants"]["numPositionPoints"]
     dimension = json_object["constants"]["dimension"]
     F = json_object["constants"]["F"]
-    
 
 
-def calculatePDE(dt=dt, F = F, sigma=sigma, Lambda=Lambda):
-    K = [1/4*gamma**(-3), 3*np.pi/8*gamma**(-4), np.pi*gamma**(-5)]
-    C = [gamma**(-1), np.pi/2*gamma**(-2), np.pi*gamma**(-3)]
-    beta = 1/(kb*T) * eCharge # multiply by charge to get eV units
-    sigmaTilde = np.sqrt(sigma**2 + 2*Lambda/beta)
-
-    factor = f"{nu0}*{g1}*(2*{np.pi})**(-1/2)*{sigmaTilde}**(-2) * {np.e}**(-1/2*{sigmaTilde}**(-2) * (x - {Ec} - {Lambda})**2)"
-    EBar = f"{Lambda}*{sigmaTilde}**(-2)*(2/{beta}*(x - {Ec}) + {sigma}**2)"
-
-    if dimension == 1:
-        dotGradTerm = f"{F[0]} * d_dy(n)" 
-        laplaceTerm = "d2_dy2(n)"
-    else:
-        dotGradTerm = f"{F[0]} * d_dy(n) + {F[1]} * d_dz(n)" 
-        laplaceTerm = "d2_dy2(n) + d2_dz2(n)"
-
-    bc_x =  "dirichlet"
-    bc_y =  "neumann" 
-    eq = pde.PDE({"n": f"{factor} * ( {K[dimension-1]}*{beta}/2*{dotGradTerm} + {K[dimension-1]}/2*{laplaceTerm} - {C[dimension-1]}*{EBar}*d_dx(n) + {C[dimension-1]}*({EBar}**2 + 2*{Lambda}*{sigma}**2/{beta}*{sigmaTilde}**(-2))*d2_dx2(n) )"}, bc=[bc_x, bc_y])               
-    grid = pde.CartesianGrid([energyRange, positionRange], [numEnergyPoints,numPositionPoints], periodic=[False, False])
-
-    if taskType == "longEvo" and json_object["pastResult"] != None:
-        state = pde.ScalarField.from_state(pde.ScalarField.from_expression(grid, initialField).attributes, np.array(json_object["pastResult"]))
-    else:
-        state = pde.ScalarField.from_expression(grid, initialField)
-
-    storage = pde.MemoryStorage()
-    res = eq.solve(state, t_range=maxTime, dt=dt, tracker=["progress", storage.tracker(dt)])
-
-    return res, storage
-    
-    
-
-
-
-# Main
-
+# Main calculation
+numPlots = max(numPlots, 1)
 if taskType == "timeEvo":
     res, storage = calculatePDE()
 
@@ -149,81 +205,30 @@ if taskType == "timeEvo":
     positions = np.linspace(positionRange[0], positionRange[1], numPositionPoints)
     times = [time for time, _ in storage.items()]
 
-    # Plot the results:
-
-    # Limit the number of plots to the maximum.
-    if numPlots > len(times) or numPlots == 0:
-        numPlots = len(times)
-        print("Showing all times")
-
-    # Find evenly space times then round down to the nearest actual time.
-    desiredTimes = np.linspace(0, maxTime, numPlots)
-    length = len(desiredTimes)
-    i=0
-    for j in range(len(times)): 
-        if i<numPlots and desiredTimes[i] <= times[j]:
-            desiredTimes[i] = times[j]
-            i+=1
-
-    # Plot graphs
-    columns = min(length, maxGraphsPerRow)
-    rows = int(np.ceil(length/5))
-
-    if plotType == "mesh":
-        X, Y = np.meshgrid(energies, positions)
-        numGraph = 1
-        fig = plt.figure(figsize=(3*columns+1,4*rows))
-
-        for time, field in storage.items():
-            if time in desiredTimes:
-                ax = fig.add_subplot(rows, columns, numGraph, projection='3d')
-                ax.plot_surface(X, Y, field.data.T, cmap=cm.coolwarm)
-                ax.set_box_aspect(aspect=None, zoom=0.9)
-                ax.set(xlabel="Energy", ylabel="Position", zlabel="", title=f"n, time = {time:.2e}s")
-                numGraph += 1 
-
-    elif plotType == "colour2d":
-        fig, axs = plt.subplots(nrows=rows, ncols=columns, sharex=True, sharey=True, figsize=(4.5*columns+1,2.5*rows))
-        fig.suptitle("Electron density")
-
-        # Removes extra axes
-        for removingIndex in range(columns-1 - (numPlots-1)%maxGraphsPerRow):
-            axs[rows-1, columns - removingIndex - 1].remove()
-
-        numGraph = 0
-
-        for time, field in storage.items():
-            if time in desiredTimes:
-                gridRow = numGraph//maxGraphsPerRow
-                gridColumn = numGraph%maxGraphsPerRow
-
-                # axs has different dimensions depending on the number of graphs.
-                if columns == 1:
-                    ax = axs
-                elif rows == 1:
-                    ax = axs[gridColumn]
-                else:
-                    ax = axs[gridRow, gridColumn]
-
-                plot = ax.pcolor(energies, positions, field.data.T, cmap=cm.viridis)
-                ax.set(xlabel="Energy", ylabel="Position", title=f"n, time = {time:.2e}s")
-                fig.colorbar(plot, ax=ax)
-
-                numGraph += 1
-
-    elif plotType == "final":
-        X, Y = np.meshgrid(energies, positions)
-        fig = plt.figure(figsize=(8,8))
-
-        ax = fig.add_subplot(1, 1, 1, projection='3d')
-        ax.plot_surface(X, Y, res.data.T, cmap=cm.coolwarm)
-        ax.set_box_aspect(aspect=None, zoom=0.9)
-        ax.set(xlabel="Energy", ylabel="Position", zlabel="Electron density", title=f"")
-
-    plt.show()
+    plotGraphs(energies, positions, res, storage, numPlots, plotType)
 
 
-if taskType == "gridSearch": # NEED TO CHANGE dt TO CLOSER TO 1e-9
+elif taskType == "longEvo":
+    res, storage = calculatePDE()
+
+    # Update JSON with new time and results
+    json_object["cumulativeTime"] += maxTime
+    json_object["pastResult"] = res.data.tolist()
+
+    with open(filePath, "w") as outfile:
+        json.dump(json_object, outfile)
+
+    energies = np.linspace(energyRange[0], energyRange[1], numEnergyPoints)
+    positions = np.linspace(positionRange[0], positionRange[1], numPositionPoints)
+    times = [time for time, _ in storage.items()]
+
+    plotGraphs(energies, positions, res, storage, numPlots, plotType)
+
+
+
+
+
+elif taskType == "gridSearch": # NEED TO CHANGE dt TO CLOSER TO 1e-9
     energies = np.linspace(energyRange[0], energyRange[1], numEnergyPoints)
     positions = np.linspace(positionRange[0], positionRange[1], numPositionPoints)
     X, Y = np.meshgrid(energies, positions)
@@ -316,63 +321,3 @@ if taskType == "gridSearch": # NEED TO CHANGE dt TO CLOSER TO 1e-9
 
     if shouldPlotGrid == True and numChosen == 2:
         plt.show()
-
-if taskType == "longEvo":
-    res, storage = calculatePDE()
-
-    energies = np.linspace(energyRange[0], energyRange[1], numEnergyPoints)
-    positions = np.linspace(positionRange[0], positionRange[1], numPositionPoints)
-    times = [time for time, _ in storage.items()]
-
-    # Plot the results:
-
-    # Limit the number of plots to the maximum.
-    if numPlots > len(times) or numPlots == 0:
-        numPlots = len(times)
-        print("Showing all times")
-
-    # Find evenly space times then round down to the nearest actual time.
-    desiredTimes = np.linspace(0, maxTime, numPlots)
-    length = len(desiredTimes)
-    i=0
-    for j in range(len(times)): 
-        if i<numPlots and desiredTimes[i] <= times[j]:
-            desiredTimes[i] = times[j]
-            i+=1
-
-    # Plot graphs
-    columns = min(length, maxGraphsPerRow)
-    rows = int(np.ceil(length/5))
-    X, Y = np.meshgrid(energies, positions)
-    
-    plotLast = True
-    if plotLast:
-        fig = plt.figure(figsize=(8,8))
-        ax = fig.add_subplot(1, 1, 1, projection='3d')
-        ax.plot_surface(X, Y, res.data.T, cmap=cm.coolwarm)
-        ax.set_box_aspect(aspect=None, zoom=0.9)
-        time = maxTime + json_object["cumulativeTime"]
-        ax.set(xlabel="Energy", ylabel="Position", zlabel="Electron density", title=f"n, time = {time:.2e}s")
-
-    else:
-        numGraph = 1
-        fig = plt.figure(figsize=(3*columns+1,4*rows))
-        for time, field in storage.items():
-            if time in desiredTimes:
-                time += json_object["cumulativeTime"]
-                ax = fig.add_subplot(rows, columns, numGraph, projection='3d')
-                ax.plot_surface(X, Y, field.data.T, cmap=cm.coolwarm)
-                ax.set_box_aspect(aspect=None, zoom=0.9)
-                ax.set(xlabel="Energy", ylabel="Position", zlabel="", title=f"n, time = {time:.2e}s")
-                numGraph += 1
-
-
-    # Update JSON with new time and results
-    json_object["cumulativeTime"] += maxTime
-    json_object["pastResult"] = res.data.tolist()
-
-    with open(filePath, "w") as outfile:
-        json.dump(json_object, outfile)
-    
-    plt.show()
-

@@ -31,7 +31,7 @@ dPosition = (positionRange[1] - positionRange[0])/numPositionPoints
 
 def PositionBC(energy):
     width = 2
-    return 1
+    # return 1
     return -np.e**(-energy**2/2*(width)**(-2))/width*(2*np.pi)*(-1/2)
 
 
@@ -46,8 +46,8 @@ eq = (K[dimension-1]*beta/2*F[0] * n.grad[0] - C[dimension-1]*EBar*n.grad[1] + f
 
 # Position BCs
 n.constrain(0, mesh.facesLeft) # Set boundaries to zero.
-# n.constrain(PositionBC(x[0:numEnergyPoints]) - PositionBC(x[0]), mesh.facesRight)
-n.constrain(100, mesh.facesRight)
+n.constrain(PositionBC(x[0:numEnergyPoints]) - PositionBC(x[0]), mesh.facesRight)
+# n.constrain(0, mesh.facesRight)
 
 # Energy BCs
 # n.constrain(0, where=mesh.facesTop)
