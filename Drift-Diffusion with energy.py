@@ -5,6 +5,7 @@ import pde # import from installing py-pde
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
+from customColours import customCmap
 import os
 import json
 
@@ -17,26 +18,24 @@ nu0 = 1
 g1 = 1
 sigma = 0.1 # Tress p51 0.05->0.15 eV
 Ec = 0 # Traps p5 -5.2eV although just offsets all energy
-Lambda = 9e-5 # 9e-6 or 9e-5eV Alexandros
+Lambda = 9e-2#9e-5 # 9e-6 or 9e-5eV Alexandros
 T = 300 # Tress p63 300K
 
-#dt = 1e-11, maxTime = 5e-7 takes 25 sec
-#dt = 1e-11, maxTime = 5e-6 takes 90 sec
-#dt = 1e-11, maxTime = 5e-5 takes 850 sec = 14 min 12 sec
-dt = 1e-11
-maxTime = 5e-8
-energyRange = [-1, 1] # ±infinity but cutoff when it goes to zero
+# 5e5 steps takes 90 secs, 5e6 steps takes 12 mins
+dt = 5e-4#1e-11
+maxTime = 1e1#5e-6
+energyRange = [-1, 1] # ±infinity but cutoff when it goes to zeros
 positionRange = [-10, 10] # solar cell about 10cm
 numEnergyPoints = 100
 numPositionPoints = 100
 
 dimension = 1 # accepts 1 or 2
-F = [1e5] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
-numPlots = 8 # Number of plots, minimum of 1.
+F = [0e5] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
+numPlots = 10 # Number of plots, minimum of 1.
 maxGraphsPerRow = 5
 
-taskType = "longEvo" # Options: timeEvo, gridSearch, longEvo
-plotType = "colour2d" # Used for timeEvo and longEvo, options: mesh, colour2d
+taskType = "timeEvo" # Options: timeEvo, gridSearch, longEvo
+plotType = "colour2d" # Options: mesh, colour2d
 shouldForceNewFile = False
 
 # Select initial field
@@ -87,6 +86,7 @@ def plotGraphs(energies, positions, res, storage, numPlots, plotType, maxGraphsP
     columns = min(numPlots, maxGraphsPerRow)
     rows = int(np.ceil(numPlots/5))
 
+    # Plot only the last graph, or an even spread
     if numPlots == 1:
         result = [(maxTime, res)]
     else:
@@ -100,6 +100,7 @@ def plotGraphs(energies, positions, res, storage, numPlots, plotType, maxGraphsP
         for time, field in result:
             if taskType == "longEvo":
                 time += json_object["cumulativeTime"] - maxTime
+
             ax = fig.add_subplot(rows, columns, numGraph, projection='3d')
             ax.plot_surface(X, Y, field.data.T, cmap=cm.coolwarm)
             ax.set_box_aspect(aspect=None, zoom=0.9)
@@ -115,14 +116,15 @@ def plotGraphs(energies, positions, res, storage, numPlots, plotType, maxGraphsP
 
         numGraph = 0
 
+        
+
         for time, field in storage.items():
             if taskType == "longEvo":
                 time += json_object["cumulativeTime"] - maxTime
 
+            # axs has different dimensions depending on the number of graphs.
             gridRow = numGraph//maxGraphsPerRow
             gridColumn = numGraph%maxGraphsPerRow
-
-            # axs has different dimensions depending on the number of graphs.
             if columns == 1:
                 ax = axs
             elif rows == 1:
@@ -130,14 +132,15 @@ def plotGraphs(energies, positions, res, storage, numPlots, plotType, maxGraphsP
             else:
                 ax = axs[gridRow, gridColumn]
 
-            plot = ax.pcolor(energies, positions, field.data.T, cmap=cm.viridis)
+            plot = ax.pcolor(energies, positions, field.data.T, cmap=customCmap(["#3399ff","#ccff66", "#000000"], 3)) # ["#3366cc", "#800000", "#009900"]
             ax.set(xlabel="Energy", ylabel="Position", title=f"n, time = {time:.2e}s")
             fig.colorbar(plot, ax=ax)
-
             numGraph += 1
 
     plt.show()
-    
+
+
+
     
 fileName = "longEvolutionData.json"
 current_dir = os.path.dirname(__file__)
@@ -157,7 +160,7 @@ if not os.path.isfile(filePath) or shouldForceNewFile:
             "Lambda" : 9e-5 ,
             "T" : 300,
             "dt" : 1e-11,
-            "maxTime" : 5e-7,
+            "maxTime" : 5e-5,
             "energyRange" : [-1, 1],
             "positionRange" : [-10, 10],
             "numEnergyPoints" : 100,
@@ -172,7 +175,7 @@ if not os.path.isfile(filePath) or shouldForceNewFile:
     with open(filePath, "w") as outfile:
         outfile.write(json_object)
 
-# read JSON and get constants
+# Read JSON and get constants
 if taskType == "longEvo":
     with open(filePath, 'r') as openfile:
         json_object = json.load(openfile)
@@ -227,19 +230,19 @@ elif taskType == "longEvo":
 
 
 
-
-elif taskType == "gridSearch": # NEED TO CHANGE dt TO CLOSER TO 1e-9
+# Old code used to test for what time step the solution diverged
+elif taskType == "gridSearch":
     energies = np.linspace(energyRange[0], energyRange[1], numEnergyPoints)
     positions = np.linspace(positionRange[0], positionRange[1], numPositionPoints)
     X, Y = np.meshgrid(energies, positions)
     
-    # Two parameters to vary in a grid
+    # Two parameters to vary in a grid  # NEED TO CHANGE dt TO CLOSER TO 1e-9
     parameterData = [{"name": "dt", "range": [-1.7, 0], "numPoints": 6, "defaultValue": 1e-1, "isLog": True},
                      {"name": "F", "range": [1e5, 1e6], "numPoints": 6, "defaultValue": 1e5, "isLog": False},
                      {"name": "sigma", "range": [0.02, 0.20], "numPoints": 3, "defaultValue": 0.13, "isLog": False},
                      {"name": "λ", "range": [-0, -6], "numPoints": 2, "defaultValue": 9e-5, "isLog": True}]
     
-    # Set parameters:
+    # Set parameters to vary
     chosenDataIndices = [2, 3]
 
     numChosen = len(chosenDataIndices)
