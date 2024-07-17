@@ -1,41 +1,85 @@
-import pde
+'''import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import cm
-import numpy as np
-import fipy as fp
+import dedalus.public as d3
+import logging
+logger = logging.getLogger(__name__)
 
 
-# examples.convection.exponential1DSource.mesh1D from 
-# https://www.ctcms.nist.gov/fipy/examples/convection/generated/examples.convection.exponential1DSource.mesh1D.html
+# Parameters
+Nr = 64
+n = 3.0
+ncc_cutoff = 1e-3
+tolerance = 1e-10
+dealias = 2
+dtype = np.float64
 
-diffCoeff = 1.
-convCoeff = (10.,)
-sourceCoeff = 1.
-from fipy import CellVariable, Grid1D, DiffusionTerm, ExponentialConvectionTerm, DefaultAsymmetricSolver, Viewer
-from fipy.tools import numerix
-nx = 1000
-L = 10.
-mesh = Grid1D(dx=L / 1000, nx=nx)
-valueLeft = 0.
-valueRight = 1.
-var = CellVariable(name="variable", mesh=mesh)
-var.constrain(valueLeft, mesh.facesLeft)
-var.constrain(valueRight, mesh.facesRight)
-eq = (DiffusionTerm(coeff=diffCoeff)+ ExponentialConvectionTerm(coeff=convCoeff)+ sourceCoeff)
-eq.solve(var=var,solver=DefaultAsymmetricSolver(tolerance=1.e-15, iterations=10000))
-axis = 0
-x = mesh.cellCenters[axis]
-AA = -sourceCoeff * x / convCoeff[axis]
-BB = 1. + sourceCoeff * L / convCoeff[axis]
-CC = 1. - numerix.exp(-convCoeff[axis] * x / diffCoeff)
-DD = 1. - numerix.exp(-convCoeff[axis] * L / diffCoeff)
-analyticalArray = AA + BB * CC / DD
-print(var.allclose(analyticalArray, rtol=1e-4, atol=1e-4))
+# Bases
+coords = d3.SphericalCoordinates('phi', 'theta', 'r')
+dist = d3.Distributor(coords, dtype=dtype)
+ball = d3.BallBasis(coords, (1, 1, Nr), radius=1, dtype=dtype, dealias=dealias)
 
-# viewer = Viewer(vars=var)
-# viewer.plot()
+# Fields
+f = dist.Field(name='f', bases=ball)
+tau = dist.Field(name='tau', bases=ball.surface)
 
-# ADDED AS VIEWER NOT WORKING
-plt.plot(mesh.x, var)
-plt.show()
+# Substitutions
+lift = lambda A: d3.Lift(A, ball, -1)
 
+# Problem
+problem = d3.NLBVP([f, tau], namespace=locals())
+problem.add_equation("lap(f) + lift(tau) = - f**n")
+problem.add_equation("f(r=1) = 0")
+
+# Initial guess
+phi, theta, r = dist.local_grids(ball)
+R0 = 5
+f['g'] = R0**(2/(n-1)) * (1 - r**2)**2
+
+# Solver
+solver = problem.build_solver(ncc_cutoff=ncc_cutoff)
+pert_norm = np.inf
+f.change_scales(dealias)
+steps = [f['g'].ravel().copy()]
+while pert_norm > tolerance:
+    solver.newton_iteration()
+    pert_norm = sum(pert.allreduce_data_norm('c', 2) for pert in solver.perturbations)
+    logger.info(f'Perturbation norm: {pert_norm:.3e}')
+    f0 = f(r=0).evaluate().allgather_data('g')[0,0,0]
+    Ri = f0**((n-1)/2)
+    logger.info(f'R iterate: {Ri}')
+    steps.append(f['g'].ravel().copy())
+
+# Compare to reference solutions from Boyd
+R_ref = {0.0: np.sqrt(6),
+        0.5: 2.752698054065,
+        1.0: np.pi,
+        1.5: 3.65375373621912608,
+        2.0: 4.3528745959461246769735700,
+        2.5: 5.355275459010779,
+        3.0: 6.896848619376960375454528,
+        3.25: 8.018937527,
+        3.5: 9.535805344244850444,
+        4.0: 14.971546348838095097611066,
+        4.5: 31.836463244694285264}
+logger.info('-'*20)
+logger.info(f'Iterations: {solver.iteration}')
+logger.info(f'Final R iteration: {Ri}')
+if n in R_ref:
+    logger.info(f'Error vs reference: {Ri-R_ref[n]:.3e}')
+
+# Plot solution
+plt.figure(figsize=(6, 4))
+_, _, r = dist.local_grids(ball, scales=(dealias,dealias,dealias))
+alpha = np.linspace(0.2, 1, len(steps))
+color = ('C0',) * (len(steps)-1) + ('C1',)
+for i, step in enumerate(steps):
+    plt.plot(r.ravel(), step, c=color[i], alpha=alpha[i], label=f"step {i}")
+plt.legend()
+plt.xlim(0, 1)
+plt.ylim(0, None)
+plt.xlabel('r')
+plt.ylabel('f')
+plt.title(f"Lane-Emden, n={n}")
+plt.tight_layout()
+plt.savefig('lane_emden.pdf')
+plt.savefig('lane_emden.png', dpi=200)'''
