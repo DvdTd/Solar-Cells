@@ -75,11 +75,5 @@ for i in range(1):
     ax.set(xlabel="Energy", ylabel="Position", zlabel="Electron density", title=f"")
     plt.show()
 
-
-"""
-Current problems with FiPy
-- solution dependent on points used
-- Neumann conditions done automatically as adding them does nothing? making them 10000 does affect it
-- changing tolerance and iterations of solver does nothing, although =0 makes the  solution 0. Means I can’t experiment with how it gets its solution. Doesn’t change an example they gave either.
-- Methods of iteration, time steps and sweeps  from https://www.ctcms.nist.gov/fipy/documentation/FAQ.html - RES increases with each sweep so something is UNSTABLE
-"""
+# viewer = fp.Viewer(vars=n)
+# viewer.plot()

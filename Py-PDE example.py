@@ -44,31 +44,3 @@ for i in range(4):
 
 
 
-
-
-
-
-
-# from tempfile import NamedTemporaryFile
-
-# import pde
-
-# # define grid, state and pde
-# grid = pde.UnitGrid([32])
-# state = pde.FieldCollection(
-#     [pde.ScalarField.random_uniform(grid), pde.VectorField.random_uniform(grid)]
-# )
-# eq = pde.PDE({"s": "-0.1 * s", "v": "-v"})
-
-# # get a temporary file to write data to
-# fileName = "exampleData.hdf5"
-# current_dir = os.path.dirname(__file__)
-# filePath = os.path.join(current_dir, fileName)
-
-# # run a simulation and write the results
-# writer = pde.FileStorage(filePath, write_mode="truncate")
-# eq.solve(state, t_range=32, dt=0.01, tracker=writer.tracker(1))
-
-# # read the simulation back in again
-# reader = pde.FileStorage(filePath, write_mode="read_only")
-# pde.plot_kymographs(reader)

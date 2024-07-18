@@ -34,7 +34,7 @@ F = [0e5] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
 numPlots = 10 # Number of plots, minimum of 1.
 maxGraphsPerRow = 5
 
-taskType = "timeEvo" # Options: timeEvo, longEvo
+taskType = "longEvo" # Options: timeEvo, longEvo
 plotType = "mesh" # Options: mesh, colour2d
 shouldForceNewFile = False
 
