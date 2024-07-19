@@ -33,7 +33,25 @@ g(x) = exp( -sum(x.^2))
 # println(m([0,1,2,3]))
 d = 2
 x0 = fill(2.,d)
-println(sum(x0.*x0))
-pn = UniformSampling(0,1)
-Sampler
-println(pn)
+# println(sum(x0.*x0))
+# pn = UniformSampling(0,1)
+# println(pn)
+
+# Pick 1st element: `map(x -> x[1],a)` or `a[:,1]`
+
+v = [1.1, 2.2, 3.3, 4.3]
+s = 4
+
+f(t, x) = exp(-x^2/(2t))/√(2π*t)
+u(t, x) = f(t+0.1, x+2) + 2f(t+0.2, x-2)
+t = range(0, 3; length=3)
+x = range(-5, 5; length=3)
+T = u.(t', x)
+# println(T)
+# display(wireframe(t, x, T; colorbar=false, xlabel="t", ylabel="x", zlabel="T", camera=(30, 45)))
+# start at 0,0, for y: (for x)
+
+
+println([(i-1)*3 + j for i in range(1, 5)  for j in range(1, 3)])
+println("____")
+println([i for i in range(1, 5*3)])
