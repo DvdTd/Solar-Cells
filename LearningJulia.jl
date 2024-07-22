@@ -52,6 +52,22 @@ T = u.(t', x)
 # start at 0,0, for y: (for x)
 
 
-println([(i-1)*3 + j for i in range(1, 5)  for j in range(1, 3)])
-println("____")
-println([i for i in range(1, 5*3)])
+# println([(i-1)*3 + j for i in range(1, 5)  for j in range(1, 3)])
+# println("____")
+# println([i for i in range(1, 5*3)])
+
+maxTime = 0.5
+dt = 0.1
+numPlots =5
+maxTimeIndex = 6
+numPlots = Int64(min(numPlots, floor(maxTimeIndex)))
+
+if numPlots == 1
+    plotIndices = [maxTimeIndex]
+else
+    plotIndices = Int64.(round.(LinRange(1, maxTimeIndex, numPlots)))
+end
+
+for i in plotIndices
+    println(i)
+end
