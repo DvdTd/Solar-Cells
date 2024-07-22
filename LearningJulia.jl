@@ -71,3 +71,5 @@ end
 for i in plotIndices
     println(i)
 end
+
+println([1,2,3][2])
