@@ -30,7 +30,7 @@ numEnergyPoints = 100
 numPositionPoints = 100
 
 dimension = 1 # accepts 1 or 2
-F = [0e5] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
+F = [1e5] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
 numPlots = 10 # Number of plots, minimum of 1.
 maxGraphsPerRow = 5
 
@@ -39,8 +39,9 @@ plotType = "mesh" # Options: mesh, colour2d
 shouldForceNewFile = False
 
 # Select initial field
+initialField = f"{np.e}**(-(x-0.4)**2)"
 # initialField = f"{np.e}**(-(x)**2/30-(y)**2)"
-initialField = f"{np.e}**(-(y)**2)"
+# initialField = f"{np.e}**(-(y)**2)"
 # initialField = f"cos(2*{np.pi}/({positionRange[1]} - {positionRange[0]})*y)"
 # initialField = f"( {np.e}**(-(x)**2/2) - {np.e}**(-({energyRange[0]})**2/2) ) * ( (y - {positionRange[0]}) / ({positionRange[1]} - {positionRange[0]})  )"
 
