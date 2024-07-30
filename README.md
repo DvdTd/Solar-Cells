@@ -1,1 +1,1 @@
-To model charge density in a solar cell, Python's py-pde and FiPy modules are used to solve the drift-diffusion equations (including the energy terms) for the time-dependent solution and the stationary state.
+To model charge density in a solar cell, Python's py-pde and FiPy modules are used to solve the drift-diffusion equations (including the energy terms) for the time-dependent solution and the stationary state. Later, Julia's HighDimPDE package is used to additionally calculate the light-interaction term which is a non-local term.

@@ -1,5 +1,5 @@
 import scipy
-import pde
+# import pde
 
 print("hi")
-grid = pde.CartesianGrid([1, 2], [2,2], periodic=[False, False])
+# grid = pde.CartesianGrid([1, 2], [2,2], periodic=[False, False])
