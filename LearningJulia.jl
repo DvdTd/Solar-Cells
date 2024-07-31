@@ -32,13 +32,13 @@
 
 
 # # println(min([1,2,3]...))
-using Printf, Formatting
-x = 1f-3
+# using Printf, Formatting
+# x = 1f-3
 
 
-function test(n,x)
+# function test(n,x)
     
-    Printf.format(Printf.Format("%.2e"),x)
-end
+#     Printf.format(Printf.Format("%.2e"),x)
+# end
 
-Printf.format(Printf.Format("%.2e"),x)
+# Printf.format(Printf.Format("%.2e"),x)
