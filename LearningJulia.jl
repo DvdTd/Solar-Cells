@@ -31,9 +31,9 @@
 # display(plot(sol[x], transpose(solu)))
 
 
-# # println(min([1,2,3]...))
+println(min([1,2,3]...))
 # using Printf, Formatting
-# x = 1f-3
+x = 1f-3
 
 
 # function test(n,x)
@@ -41,4 +41,4 @@
 #     Printf.format(Printf.Format("%.2e"),x)
 # end
 
-# Printf.format(Printf.Format("%.2e"),x)
+Printf.format(Printf.Format("%.2e"),x)
