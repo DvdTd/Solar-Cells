@@ -42,3 +42,5 @@ x = 1f-3
 # end
 
 Printf.format(Printf.Format("%.2e"),x)
+
+println(abs(-23.23443))

@@ -54,25 +54,24 @@ shouldCalcNew = true # Option to save time if changed plot parameters.
 jldFilePath = "/Users/david/Documents/Python/Solar Cells/MethodOfLinesData.jld"
 
 # Use steep sigmoid for the step, discontinuous didn't work - "TypeError: non-boolean (Num) used in boolean context"
-sigmoid(x, x0, scale) = 1/(1 + exp(-scale*(x-x0)))
+sigmoid(x, x0, scale) = 1/(1 + exp(-scale*(x-x0))) #sign(x-x0)
 Ec(ϵ) = EH + (EL - EH)*sigmoid(ϵ, Eav, 1f6)
-
-# function Ec(ϵ)
-#     val = ϵ
-#     println(val)
-#     return (ϵ > Eav) ? EL : EH
-# end
 
 if shouldCalcNew || !isfile(jldFilePath)
     normalGaussian(x, mean, width) = (2*π)^(-0.5)*width^(-2) * exp(- sum((x - mean).^2 .* [0.5*width^(-2), 0]))
     # Ix = Integral(x in DomainSets.ClosedInterval(positionRange[1], x)) #  basically cumulative sum from 0 to x
-    # IΔ = Integral(ϵ in DomainSets.ClosedInterval(energyRange[1], ϵ)) # basically cumulative sum from 0 to x
+    # IΔ = Integral(ϵ in DomainSets.ClosedInterval(energyRange[1], ϵ))
     
+    # Interpolate between Gaussians with different means; G(mean1)*(1-sig) + G(mean2)*(sig)
+    ECgaussian(x, mean1, mean2, width) = (exp(-(x-mean1)^2*0.5*width^(-2))*(1-sigmoid(x,(mean1+mean2)/2, 1f6)) + exp(-(ϵ-mean2)^2*0.5*width^(-2))*sigmoid(x,(mean1+mean2)/2, 1f6) )
+
+    # muϵϵ^2*mu/(π*c*hbar^2)*1f-5 * (A + B*(2*π*Δ/(c*hbar))^2) * abs(Δ^3/hbar^2) * (2*π)^(-0.5)/sigma * ECgaussian(ϵ+Δ, EL, EH, sigma) * ( (1-2*sigmoid(ϵ, Eav, 1f6)) * n(t, ϵ, x)*(1-n(t, ϵ+Δ, x)) + (n(t, ϵ+Δ, x) - n(t, ϵ, x))/(exp(abs(Δ*beta))-1)) * sigmoid((Eav-ϵ)*Δ, 0, 1f6)
+
 
     eq = [
         # Integ(t, ϵ, x) ~ IΔ(n(t, ϵ, x)), #Integ(t, ϵ, x) + 
         Ebar(t, ϵ, x) ~ Lambda*sigmaTilde^(-2) * (2/beta*(ϵ-Ec(ϵ)) + sigma^2),
-        Dt(n(t, ϵ, x)) ~ exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-0.5) * (exp(-(ϵ-EH-Lambda)^2*0.5*sigmaTilde^(-2))*(1-sigmoid(ϵ,Eav, 1f6)) + exp(-(ϵ-EL-Lambda)^2*0.5*sigmaTilde^(-2))*sigmoid(ϵ,Eav, 1f6) ) * (  K*beta/2*F * Dx(n(t, ϵ, x)) + K/2 * Dx(Dx(n(t, ϵ, x))) - C*Ebar(t, ϵ, x) * Dϵ(n(t, ϵ, x)) + C*(Ebar(t, ϵ, x)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * Dϵ(Dϵ(n(t, ϵ, x))) )
+        Dt(n(t, ϵ, x)) ~ exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-0.5) * ECgaussian(ϵ, EH+Lambda, EL+Lambda, sigmaTilde) * (  K*beta/2*F * Dx(n(t, ϵ, x)) + K/2 * Dx(Dx(n(t, ϵ, x))) - C*Ebar(t, ϵ, x) * Dϵ(n(t, ϵ, x)) + C*(Ebar(t, ϵ, x)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * Dϵ(Dϵ(n(t, ϵ, x))) )
     ]
 
     (posWidth, energyWidth) = (1, 3) # (1, 3) (1, 0.4)
@@ -119,11 +118,17 @@ end
 zmin = min(soln...)
 zmax = max(soln...)
 
+shownPlots = [1,2,3,4,5]
+
 anim = @animate for i in 1:lenSolt
     # camera=(azimuthal, elevation), azimuthal is left-handed rotation about +ve z  e.g. (80, 50)
     plot = surface(sole, solx, transpose(soln[i, :, :]), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)), clims=(zmin, zmax))
-    zlims!(zmin, zmax)
     title!("Time = " * Printf.format(Printf.Format("%.2e"),(i-1)/lenSolt * maxTime) * "s")
+
+    if i in shownPlots
+        display(plot)
+    end
+    zlims!(zmin, zmax)
 end
 gif(anim, "drift_diffusion.gif", fps = 10)
 
