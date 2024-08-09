@@ -32,7 +32,7 @@ dPosition = (positionRange[1] - positionRange[0])/numPositionPoints
 def PositionBC(energy):
     width = 1
     # return 1
-    return -np.e**(-energy**2/2*(width)**(-2))/width*(2*np.pi)*(-1/2)
+    return np.e**(-energy**2/2*(width)**(-2))/width*(2*np.pi)**(-1/2)
 
 
 mesh = fp.Grid2D(dx=dEnergy, dy=dPosition, nx=numEnergyPoints, ny=numPositionPoints) + ((energyRange[0],), (positionRange[0],))
@@ -43,7 +43,6 @@ y = mesh.cellCenters[1]
 EBar = Lambda * sigmaTilde**(-2) * (2/beta * (x - Ec) + sigma**2)
 SecondDerivativeMatrixCoeff =  K[dimension-1]/2 * fp.Variable(value=((1, 0), (0, 0))) + C[dimension-1]*(EBar**2 + 2*Lambda*sigma**2/beta*sigmaTilde**(-2)) * fp.Variable(value=((0, 0), (0, 1)))
 eq = (K[dimension-1]*beta/2*F[0] * n.grad[0] - C[dimension-1]*EBar*n.grad[1] + fp.DiffusionTerm(SecondDerivativeMatrixCoeff) == 0)
-
 
 # Position BCs
 n.constrain(0, mesh.facesLeft) # Set boundaries to zero.
@@ -63,17 +62,26 @@ n.constrain(0, where=mesh.facesBottom)
 solver = fp.LinearLUSolver(tolerance=1e-10, iterations=10)
 # eq.solve(var=n, solver=solver)
 
+# print(np.array(mesh.y).reshape(numEnergyPoints, numPositionPoints)[:,1])
+
 for i in range(1):
     # n.updateOld()
     res = eq.sweep(var=n, solver=solver)
-    print("res", i, "=", res)
+    # print("res", i, "=", res)
 
     fig = plt.figure(figsize=(7,7))
     ax = fig.add_subplot(1, 1, 1, projection='3d')
     ax.plot_surface(np.array(mesh.x).reshape(numEnergyPoints, numPositionPoints), np.array(mesh.y).reshape(numEnergyPoints, numPositionPoints), np.array(n).reshape(numEnergyPoints, numPositionPoints).T, cmap=cm.coolwarm)
     ax.set_box_aspect(aspect=None, zoom=0.9)
     ax.set(xlabel="Energy", ylabel="Position", zlabel="Electron density", title=f"")
-    plt.show()
+    
+    # Show position dependence is linear.
+    fig = plt.figure(figsize=(7,7))
+    plt.plot(np.array(mesh.y).reshape(numEnergyPoints, numPositionPoints)[:,1], np.array(n).reshape(numEnergyPoints, numPositionPoints).T[:,350])
+    plt.xlabel("Position")
+    plt.ylabel("Electron density")
+
+plt.show()
 
 
 """

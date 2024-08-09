@@ -21,17 +21,22 @@ Ec = 0 # Traps p5 -5.2eV although just offsets all energy
 Lambda = 9e-2#9e-5 # 9e-6 or 9e-5eV Alexandros
 T = 300 # Tress p63 300Ks
 
-# 5e5 steps takes 90 secs, 5e6 steps takes 12 mins
-dt = 1e-11# 5e-4#1e-11
-maxTime = 5e-6# 1e1#5e-6
+# dt = 1e-12# 5e-4#1e-11
+# maxTime = 1e-7# 1e1#5e-6
+# F = [1e6] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
+
+dt = 1e-5# 5e-4#1e-11
+maxTime = 10e-1# 1e1#5e-6
+F = [0e6] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
+
 energyRange = [-1, 1] # ±infinity but cutoff when it goes to zeros
 positionRange = [-10, 10] # solar cell about 10cm
 numEnergyPoints = 100
 numPositionPoints = 100 
 
 dimension = 1 # accepts 1 or 2
-F = [1e5] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
-numPlots = 10 # Number of plots, minimum of 1.
+
+numPlots = 4 # Number of plots, minimum of 1.
 maxGraphsPerRow = 5
 
 taskType = "timeEvo" # Options: timeEvo, longEvo

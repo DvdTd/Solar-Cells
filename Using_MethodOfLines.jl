@@ -27,18 +27,19 @@ B = 7f-3
 N = 5f20
 solidAngleCoeff = 1f-5
 numPlots = 50
-energyRange = [-1.5 + Eav, 1.5 + Eav] # ±infinity but cutoff when it goes to zeros
 maxPos = 60.0
 positionRange = [-maxPos, maxPos] 
-numEnergyPoints = 13
-numPositionPoints = 13 # odd is good
+numPositionPoints = 7 # odd is good
 
-deltaRange = [-1f6, 1f6]
-numDeltaPoints = 5
+energyRangeA = [EH - 10, EH]
+energyRangeB = [EH, EL]
+energyRangeC = [EL, EL + 10]
+numEnergyPointsAC = 13 # * 3
+numEnergyPointsB = 7
 
 F = [1f5][1]
-dt = 1f-5# 5f-4#1f-11
-maxTime = 1f-2 #5f-6
+dt = 1f-10# 5f-4#1f-11
+maxTime = 5f-4 #5f-6
 cameraTup = (10, 50)#(10,-5)#(85, 60) #  
 
 # Small F parameters
@@ -47,71 +48,90 @@ cameraTup = (10, 50)#(10,-5)#(85, 60) #
 # maxTime = 10e3
 # cameraTup = (40, 55)
 
-@parameters t, ϵ, x, Δ
-@variables n(..) lightTerm(..)
+@parameters t, ϵA, ϵB, ϵC, x
+@variables nA(..) nB(..) nC(..)
 Dt = Differential(t)
-Dϵ = Differential(ϵ)
 Dx = Differential(x)
-DΔ = Differential(Δ)
 Dxx = Differential(x)^2
-Dϵϵ = Differential(ϵ)^2
+
+DϵA = Differential(ϵA)
+DϵϵA = Differential(ϵA)^2
+DϵB = Differential(ϵB)
+DϵϵB = Differential(ϵB)^2
+DϵC = Differential(ϵC)
+DϵϵC = Differential(ϵC)^2
 
 shouldCalcNew = true # Gives the option to change the plot parameters without recalculating the solution.
 jldFilePath = "/Users/david/Documents/Python/Solar Cells/MethodOfLinesData.jld"
 
-# Use steep sigmoid for the step
-sigmoid(x, x0, scale) =  (1+sign(x-x0))/2 #sign(x-x0) 1/(1 + exp(-scale*(x-x0)))
-Ec(ϵ) = EH + (EL - EH)*sigmoid(ϵ, Eav, 1f6)
-
 if shouldCalcNew || !isfile(jldFilePath)
     normalGaussian(x, mean, width) = (2*π)^(-0.5)*width^(-2) * exp(- sum((x - mean).^2 .* [0.5*width^(-2), 0]))
-    IΔ = Integral(Δ in DomainSets.ClosedInterval(deltaRange[1], Δ))
-    
+
+    # function step(x, x0)
+    #     # print
+    #     return (1+sign(x-x0))/2
+    # end
+
+    step(x, x0) =  (1+sign(x-x0))/2
+    Ec(ϵ) = EH + (EL - EH)*step(ϵ, Eav)
+    ECgaussian(x, mean1, mean2, width) = (exp(-(x-mean1)^2*0.5*width^(-2)) * (1-step(x,(mean1+mean2)/2)) + exp(-(ϵ-mean2)^2*0.5*width^(-2)) * step(x,(mean1+mean2)/2) ) #XXX only used once so remove mean args?
+    piecewiseN(ϵ, n) = n(t, EL, x) * (1-step(ϵ,Eav)) + n(t, EH, x) * (step(ϵ,Eav))
+    piecewiseDN(ϵ, n, Dϵϵ) = Dϵϵ(n(t, EL, x)) * (1-step(ϵ,Eav)) + Dϵϵ(n(t, EH, x)) * (step(ϵ,Eav))
+
     # Interpolate between Gaussians with different means; G(mean1) * (1-sig) + G(mean2) * (sig)
-    ECgaussian(x, mean1, mean2, width) = (exp(-(x-mean1)^2*0.5*width^(-2))*(1-sigmoid(x,(mean1+mean2)/2, 1f6)) + exp(-(ϵ-mean2)^2*0.5*width^(-2))*sigmoid(x,(mean1+mean2)/2, 1f6) )
     Ebar(ϵ) = Lambda*sigmaTilde^(-2) * (2/beta*(ϵ-Ec(ϵ)) + sigma^2)
 
     eq = [
-        lightTerm(t, ϵ, x, Δ) ~ muϵϵ^2*mu/(π*c*hbar^2)*1f-5 * (A + B*(2*π*Δ/(c*hbar))^2) * Δ^3/hbar^2 * sign(Δ) * (2*π)^(-0.5)/sigma * ECgaussian(ϵ+Δ, EL, EH, sigma) * ( (1-2*sigmoid(ϵ, Eav, 1f6)) * n(t, ϵ, x, Δ)*(1-n(t, ϵ, x, Δ)) + (n(t, ϵ, x, Δ) - n(t, ϵ, x, Δ))/(exp(abs(Δ*beta))-1)) * sigmoid((Eav-ϵ)*Δ, 0, 1f6),
-        Dt(n(t, ϵ, x, Δ)) ~ IΔ(lightTerm(t, ϵ, x, Δ)) + exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-0.5) * ECgaussian(ϵ, EH+Lambda, EL+Lambda, sigmaTilde) * (  K*beta/2*F * Dx(n(t, ϵ, x, Δ)) + K/2 * Dxx(n(t, ϵ, x, Δ)) - C*Ebar(ϵ) * Dϵ(n(t, ϵ, x, Δ)) + C*(Ebar(ϵ)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * Dϵϵ(n(t, ϵ, x, Δ)) )
-        # Dt(n(t, ϵ, x, Δ)) ~ exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-0.5) * ECgaussian(ϵ, EH+Lambda, EL+Lambda, sigmaTilde) * (  K*beta/2*F * Dx(n(t, ϵ, x, Δ)) + K/2 * Dxx(n(t, ϵ, x, Δ)) - C*Ebar(ϵ) * Dϵ(n(t, ϵ, x, Δ)) + C*(Ebar(ϵ)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * Dϵϵ(n(t, ϵ, x, Δ)) )
+        Dt(nA(t, ϵA, x)) ~ 0,#DϵϵA(nA(t, EH, x)) ,#+ exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-2) * ECgaussian(ϵA, EH+Lambda, EL+Lambda, sigmaTilde) * (  K*beta/2*F * Dx(nA(t, ϵA, x)) + K/2 * Dxx(nA(t, ϵA, x)) - C*Ebar(ϵA) * DϵA(nA(t, ϵA, x)) + C*(Ebar(ϵA)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * DϵϵA(nA(t, ϵA, x)) ),
+        Dt(nB(t, ϵB, x)) ~ 0,#nB(t, EL, x) * nB(t, ϵB, x),#+ exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-2) * ECgaussian(ϵB, EH+Lambda, EL+Lambda, sigmaTilde) * (  K*beta/2*F * Dx(nB(t, ϵB, x)) + K/2 * Dxx(nB(t, ϵB, x)) - C*Ebar(ϵB) * DϵB(nB(t, ϵB, x)) + C*(Ebar(ϵB)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * DϵϵB(nB(t, ϵB, x)) ),
+        Dt(nC(t, ϵC, x)) ~ 0,#DϵϵC(nC(t, EL, x)),# + exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-2) * ECgaussian(ϵC, EH+Lambda, EL+Lambda, sigmaTilde) * (  K*beta/2*F * Dx(nC(t, ϵC, x)) + K/2 * Dxx(nC(t, ϵC, x)) - C*Ebar(ϵC) * DϵC(nC(t, ϵC, x)) + C*(Ebar(ϵC)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * DϵϵC(nC(t, ϵC, x)) ),
         ]
 
     # Gaussian at Eav
     (posWidth, energyWidth) = (1, 1) # (1, 3) (1, 0.4)
-    initialFunc(ϵ, x) = (normalGaussian(x, 0, posWidth) - normalGaussian(positionRange[1], 0, posWidth)) * (  normalGaussian(ϵ, Eav, energyWidth) - min(normalGaussian(energyRange[1], Eav, energyWidth), normalGaussian(energyRange[2], Eav, energyWidth))  )
+    initialFunc(ϵ, x) = (normalGaussian(x, 0, posWidth) - normalGaussian(positionRange[1], 0, posWidth)) * (  normalGaussian(ϵ, Eav, energyWidth) - min(normalGaussian(energyRangeA[1], Eav, energyWidth), normalGaussian(energyRangeC[2], Eav, energyWidth))  )
     # 2 Gaussians at EL and EH
     # (posWidth, energyWidth) = (1, 0.4) # (1, 3) (1, 0.4)
     # initialFunc(ϵ, x) = (normalGaussian(x, 0, posWidth) - normalGaussian(positionRange[1], 0, posWidth)) * (  normalGaussian(ϵ, EH, energyWidth) + normalGaussian(ϵ, EL, energyWidth) - min(normalGaussian(energyRange[1], EH, energyWidth) + normalGaussian(energyRange[1], EL, energyWidth), normalGaussian(energyRange[2], EH, energyWidth) + normalGaussian(energyRange[2], EL, energyWidth))  )
    
     bcs = [
-           lightTerm(0.0, ϵ, x, Δ) ~ muϵϵ^2*mu/(π*c*hbar^2)*1f-5 * (A + B*(2*π*Δ/(c*hbar))^2) * abs(Δ^3/hbar^2) * (2*π)^(-0.5)/sigma * ECgaussian(ϵ+Δ, EL, EH, sigma) * ( (1-2*sigmoid(ϵ, Eav, 1f6)) * initialFunc(ϵ, x)*(1-initialFunc(ϵ+Δ, x)) + (initialFunc(ϵ+Δ, x) - initialFunc(ϵ, x))/(exp(abs(Δ*beta))-1)) * sigmoid((Eav-ϵ)*Δ, 0, 1f6),
-           lightTerm(t, energyRange[1], x, Δ) ~ 0.0,
-           lightTerm(t, energyRange[2], x, Δ) ~ 0.0,
-           lightTerm(t, ϵ, positionRange[1], Δ) ~ 0.0, # at edge, n=0 so want dn/dt=0
-           lightTerm(t, ϵ, positionRange[2], Δ) ~ 0.0,
-           lightTerm(t, ϵ, x, deltaRange[1]) ~ 0.0, # huge jump -> 0
-           lightTerm(t, ϵ, x, deltaRange[2]) ~ 0.0,
+        nA(0.0, ϵA, x) ~ initialFunc(ϵA, x),
+        nA(t, ϵA, positionRange[1]) ~ 0.0, 
+        nA(t, ϵA, positionRange[2]) ~ 0.0,
+        DϵA(nA(t, energyRangeA[1], x)) ~ 0.0,
 
-           n(0.0, ϵ, x, Δ) ~ initialFunc(ϵ, x),
-           Dϵ(n(t, energyRange[1], x, Δ)) ~ 0.0,
-           Dϵ(n(t, energyRange[2], x, Δ)) ~ 0.0,
-           n(t, ϵ, positionRange[1], Δ) ~ 0.0, 
-           n(t, ϵ, positionRange[2], Δ) ~ 0.0,
-           DΔ(n(t, ϵ, x, deltaRange[1])) ~ 0.0, # n doesn't change with respect to Δ.
-           DΔ(n(t, ϵ, x, deltaRange[2])) ~ 0.0] 
+        nB(0.0, ϵB, x) ~ initialFunc(ϵB, x),
+        nB(t, ϵB, positionRange[1]) ~ 0.0, 
+        nB(t, ϵB, positionRange[2]) ~ 0.0,
+        
+        nC(0.0, ϵC, x) ~ initialFunc(ϵC, x),
+        nC(t, ϵC, positionRange[1]) ~ 0.0, 
+        nC(t, ϵC, positionRange[2]) ~ 0.0,
+        DϵC(nC(t, energyRangeC[2], x)) ~ 0.0, 
 
-    domains = [t ∈ Interval(0.0, maxTime), ϵ ∈ Interval(energyRange[1], energyRange[2]), x ∈ Interval(positionRange[1], positionRange[2]), Δ ∈ Interval(deltaRange[1], deltaRange[2])]
-    @named pde_system = PDESystem(eq, bcs, domains, [t, ϵ, x, Δ], [n(t, ϵ, x, Δ), lightTerm(t, ϵ, x, Δ)])
+        # Interface
+        nB(t, energyRangeB[1], x) ~ nA(t, energyRangeA[2], x), 
+        # DϵB(nB(t, energyRangeB[1], x)) ~ DϵA(nA(t, energyRangeA[2], x)),
+        nB(t, energyRangeB[2], x) ~ nC(t, energyRangeA[1], x), 
+        # DϵB(nB(t, energyRangeB[2], x)) ~ DϵC(nC(t, energyRangeA[1], x)),
+
+        # nA(t, energyRangeA[2], x) ~ nB(t, energyRangeB[1], x), 
+        # DϵA(nA(t, energyRangeA[2], x)) ~ DϵB(nB(t, energyRangeB[1], x)),
+        # nA(t, energyRangeA[2], x) ~ nB(t, energyRangeB[1], x), 
+        # DϵA(nA(t, energyRangeA[2], x)) ~ DϵB(nB(t, energyRangeB[1], x)), # XXX these might change it - why?? need to also look at equations
+        ] 
+
+    domains = [t ∈ Interval(0.0, maxTime), ϵA ∈ Interval(energyRangeA[1], energyRangeA[2]), ϵB ∈ Interval(energyRangeB[1], energyRangeB[2]), ϵC ∈ Interval(energyRangeC[1], energyRangeC[2]), x ∈ Interval(positionRange[1], positionRange[2])]
+    @named pde_system = PDESystem(eq, bcs, domains, [t, ϵA, ϵB, ϵC, x], [nA(t, ϵA, x), nB(t, ϵB, x), nC(t, ϵC, x)])
     order = 2
-    discretization = MOLFiniteDifference([ϵ => numEnergyPoints, x => numPositionPoints, Δ => numDeltaPoints], t)
+    discretization = MOLFiniteDifference([ϵA => numEnergyPointsAC, ϵB => numEnergyPointsB, ϵC => numEnergyPointsAC, x => numPositionPoints], t)
     
     prob = MethodOfLines.discretize(pde_system, discretization)
     sol = solve(prob, QNDF(), saveat = maxTime/numPlots, dt=dt)
 
-    soln = sol[n(t, ϵ, x, Δ)]
+    soln = hcat(sol[nA(t, ϵA, x)], sol[nB(t, ϵB, x)], sol[nC(t, ϵC, x)])
     lenSolt = length(sol[t])
-    sole = sol[ϵ]
+    sole = [sol[ϵA]; sol[ϵB]; sol[ϵC]]
     solx = sol[x]
 
     # Write to file
@@ -133,22 +153,19 @@ initialPlot = surface(sole, solx, Surface((sole,solx)->initialFunc(sole, solx), 
 title!("Initial")
 display(initialPlot)
 shownPlots = []
+zmin = min(soln[:,:,:]...)
+zmax = max(soln[:,:,:]...)
 
-# println(size(soln))
-for j in 1:numDeltaPoints #[1,2,3,numDeltaPoints] # used to show n is independent of delta - MAYBE WANT IT LARGE SO INTEG OVER WHOLE DOMAIN (ALTHOUGH LIMITS ALREADY BIG)
-    local zmin = min(soln[:,:,:,j]...)
-    local zmax = max(soln[:,:,:,j]...)
+anim = @animate for i in 1:lenSolt
+    
+    # camera=(azimuthal, elevation), azimuthal is left-handed rotation about +ve z  e.g. (80, 50)
+    plot = surface(sole, solx, transpose(soln[i, :, :]), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)), clims=(zmin, zmax))
+    title!("Time = " * Printf.format(Printf.Format("%.2e"),(i-1)/lenSolt * maxTime) * "s")
 
-    local anim = @animate for i in 1:lenSolt
-        # camera=(azimuthal, elevation), azimuthal is left-handed rotation about +ve z  e.g. (80, 50)
-        plot = surface(sole, solx, transpose(soln[i, :, :, j]), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)), clims=(zmin, zmax))
-        title!("Time = " * Printf.format(Printf.Format("%.2e"),(i-1)/lenSolt * maxTime) * "s")
-        title!("Time = " * Printf.format(Printf.Format("%f"),(i-1)/lenSolt * maxTime) * "s")
-
-        if i in shownPlots
-            display(plot)
-        end
-        zlims!(zmin, zmax)
+    if i in shownPlots
+        display(plot)
     end
-    display(gif(anim, "drift_diffusion.gif", fps = 10))
+    zlims!(zmin, zmax)
 end
+display(gif(anim, "drift_diffusion.gif", fps = floor(numPlots/5))) # DONT NEED TO SAVE EACH TIME
+
