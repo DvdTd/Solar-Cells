@@ -31,21 +31,22 @@ maxPos = 60.0
 positionRange = [-maxPos, maxPos] 
 numPositionPoints = 7 # odd is good
 
-energyRangeA = [EH - 10, EH]
+energy_tail_length = 2
+energyRangeA = [EH - energy_tail_length, EH]
 energyRangeB = [EH, EL]
-energyRangeC = [EL, EL + 10]
-numEnergyPointsAC = 13 # * 3
-numEnergyPointsB = 7
+energyRangeC = [EL, EL + energy_tail_length]
+numEnergyPointsAC = 9
+numEnergyPointsB = 9
 
 F = [1f5][1]
 dt = 1f-10# 5f-4#1f-11
-maxTime = 5f-4 #5f-6
+maxTime = 1f-3 #5f-6
 cameraTup = (10, 50)#(10,-5)#(85, 60) #  
 
 # Small F parameters
-# F = [1f-1][1]
-# dt = 1f-1
-# maxTime = 10e3
+# F = [0f-1][1]
+# dt = 1f-4
+# maxTime = 3e3
 # cameraTup = (40, 55)
 
 @parameters t, ϵA, ϵB, ϵC, x
@@ -67,14 +68,9 @@ jldFilePath = "/Users/david/Documents/Python/Solar Cells/MethodOfLinesData.jld"
 if shouldCalcNew || !isfile(jldFilePath)
     normalGaussian(x, mean, width) = (2*π)^(-0.5)*width^(-2) * exp(- sum((x - mean).^2 .* [0.5*width^(-2), 0]))
 
-    # function step(x, x0)
-    #     # print
-    #     return (1+sign(x-x0))/2
-    # end
-
     step(x, x0) =  (1+sign(x-x0))/2
     Ec(ϵ) = EH + (EL - EH)*step(ϵ, Eav)
-    ECgaussian(x, mean1, mean2, width) = (exp(-(x-mean1)^2*0.5*width^(-2)) * (1-step(x,(mean1+mean2)/2)) + exp(-(ϵ-mean2)^2*0.5*width^(-2)) * step(x,(mean1+mean2)/2) ) #XXX only used once so remove mean args?
+    ECgaussian(x, mean1, mean2, width) = (exp(-(x-mean1)^2*0.5*width^(-2)) * (1-step(x,(mean1+mean2)/2)) + exp(-(x-mean2)^2*0.5*width^(-2)) * step(x,(mean1+mean2)/2) ) #XXX only used once so remove mean args?
     piecewiseN(ϵ, n) = n(t, EL, x) * (1-step(ϵ,Eav)) + n(t, EH, x) * (step(ϵ,Eav))
     piecewiseDN(ϵ, n, Dϵϵ) = Dϵϵ(n(t, EL, x)) * (1-step(ϵ,Eav)) + Dϵϵ(n(t, EH, x)) * (step(ϵ,Eav))
 
@@ -82,9 +78,9 @@ if shouldCalcNew || !isfile(jldFilePath)
     Ebar(ϵ) = Lambda*sigmaTilde^(-2) * (2/beta*(ϵ-Ec(ϵ)) + sigma^2)
 
     eq = [
-        Dt(nA(t, ϵA, x)) ~ 0,#DϵϵA(nA(t, EH, x)) ,#+ exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-2) * ECgaussian(ϵA, EH+Lambda, EL+Lambda, sigmaTilde) * (  K*beta/2*F * Dx(nA(t, ϵA, x)) + K/2 * Dxx(nA(t, ϵA, x)) - C*Ebar(ϵA) * DϵA(nA(t, ϵA, x)) + C*(Ebar(ϵA)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * DϵϵA(nA(t, ϵA, x)) ),
-        Dt(nB(t, ϵB, x)) ~ 0,#nB(t, EL, x) * nB(t, ϵB, x),#+ exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-2) * ECgaussian(ϵB, EH+Lambda, EL+Lambda, sigmaTilde) * (  K*beta/2*F * Dx(nB(t, ϵB, x)) + K/2 * Dxx(nB(t, ϵB, x)) - C*Ebar(ϵB) * DϵB(nB(t, ϵB, x)) + C*(Ebar(ϵB)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * DϵϵB(nB(t, ϵB, x)) ),
-        Dt(nC(t, ϵC, x)) ~ 0,#DϵϵC(nC(t, EL, x)),# + exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-2) * ECgaussian(ϵC, EH+Lambda, EL+Lambda, sigmaTilde) * (  K*beta/2*F * Dx(nC(t, ϵC, x)) + K/2 * Dxx(nC(t, ϵC, x)) - C*Ebar(ϵC) * DϵC(nC(t, ϵC, x)) + C*(Ebar(ϵC)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * DϵϵC(nC(t, ϵC, x)) ),
+        Dt(nA(t, ϵA, x)) ~ exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-2) * ECgaussian(ϵA, EH+Lambda, EL+Lambda, sigmaTilde) * (  K*beta/2*F * Dx(nA(t, ϵA, x)) + K/2 * Dxx(nA(t, ϵA, x)) - C*Ebar(ϵA) * DϵA(nA(t, ϵA, x)) + C*(Ebar(ϵA)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * DϵϵA(nA(t, ϵA, x)) ),
+        Dt(nB(t, ϵB, x)) ~ exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-2) * ECgaussian(ϵB, EH+Lambda, EL+Lambda, sigmaTilde) * (  K*beta/2*F * Dx(nB(t, ϵB, x)) + K/2 * Dxx(nB(t, ϵB, x)) - C*Ebar(ϵB) * DϵB(nB(t, ϵB, x)) + C*(Ebar(ϵB)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * DϵϵB(nB(t, ϵB, x)) ),
+        Dt(nC(t, ϵC, x)) ~ exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-2) * ECgaussian(ϵC, EH+Lambda, EL+Lambda, sigmaTilde) * (  K*beta/2*F * Dx(nC(t, ϵC, x)) + K/2 * Dxx(nC(t, ϵC, x)) - C*Ebar(ϵC) * DϵC(nC(t, ϵC, x)) + C*(Ebar(ϵC)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * DϵϵC(nC(t, ϵC, x)) ),
         ]
 
     # Gaussian at Eav
@@ -111,14 +107,9 @@ if shouldCalcNew || !isfile(jldFilePath)
 
         # Interface
         nB(t, energyRangeB[1], x) ~ nA(t, energyRangeA[2], x), 
-        # DϵB(nB(t, energyRangeB[1], x)) ~ DϵA(nA(t, energyRangeA[2], x)),
-        nB(t, energyRangeB[2], x) ~ nC(t, energyRangeA[1], x), 
-        # DϵB(nB(t, energyRangeB[2], x)) ~ DϵC(nC(t, energyRangeA[1], x)),
-
-        # nA(t, energyRangeA[2], x) ~ nB(t, energyRangeB[1], x), 
-        # DϵA(nA(t, energyRangeA[2], x)) ~ DϵB(nB(t, energyRangeB[1], x)),
-        # nA(t, energyRangeA[2], x) ~ nB(t, energyRangeB[1], x), 
-        # DϵA(nA(t, energyRangeA[2], x)) ~ DϵB(nB(t, energyRangeB[1], x)), # XXX these might change it - why?? need to also look at equations
+        DϵB(nB(t, energyRangeB[1], x)) ~ DϵA(nA(t, energyRangeA[2], x)),
+        nB(t, energyRangeB[2], x) ~ nC(t, energyRangeC[1], x), 
+        DϵB(nB(t, energyRangeB[2], x)) ~ DϵC(nC(t, energyRangeC[1], x)),
         ] 
 
     domains = [t ∈ Interval(0.0, maxTime), ϵA ∈ Interval(energyRangeA[1], energyRangeA[2]), ϵB ∈ Interval(energyRangeB[1], energyRangeB[2]), ϵC ∈ Interval(energyRangeC[1], energyRangeC[2]), x ∈ Interval(positionRange[1], positionRange[2])]
@@ -149,9 +140,9 @@ else # Read from file
 end
 
 # Plot
-initialPlot = surface(sole, solx, Surface((sole,solx)->initialFunc(sole, solx), sole, solx), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)))
-title!("Initial")
-display(initialPlot)
+# initialPlot = surface(sole, solx, Surface((sole,solx)->initialFunc(sole, solx), sole, solx), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)))
+# title!("Initial")
+# display(initialPlot)
 shownPlots = []
 zmin = min(soln[:,:,:]...)
 zmax = max(soln[:,:,:]...)
@@ -160,6 +151,7 @@ anim = @animate for i in 1:lenSolt
     
     # camera=(azimuthal, elevation), azimuthal is left-handed rotation about +ve z  e.g. (80, 50)
     plot = surface(sole, solx, transpose(soln[i, :, :]), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)), clims=(zmin, zmax))
+
     title!("Time = " * Printf.format(Printf.Format("%.2e"),(i-1)/lenSolt * maxTime) * "s")
 
     if i in shownPlots
@@ -167,5 +159,5 @@ anim = @animate for i in 1:lenSolt
     end
     zlims!(zmin, zmax)
 end
-display(gif(anim, "drift_diffusion.gif", fps = floor(numPlots/5))) # DONT NEED TO SAVE EACH TIME
+display(gif(anim, "drift_diffusion.gif", fps = floor(numPlots/5)))
 
