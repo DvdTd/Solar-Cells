@@ -91,6 +91,7 @@ if shouldCalcNew || !isfile(jldFilePath)
            n(t, ϵ, positionRange[2]) ~ 0.0,
            ] 
 
+    # Solve the equations.
     domains = [t ∈ Interval(0.0, maxTime), ϵ ∈ Interval(energyRange[1], energyRange[2]), x ∈ Interval(positionRange[1], positionRange[2])]
     @named pde_system = PDESystem(eq, bcs, domains, [t, ϵ, x], [n(t, ϵ, x)])
     order = 2
@@ -99,6 +100,7 @@ if shouldCalcNew || !isfile(jldFilePath)
     prob = MethodOfLines.discretize(pde_system, discretization)
     sol = solve(prob, QNDF(), saveat = maxTime/numPlots, dt=dt)
 
+    # Extract relevant parts of the solution.
     soln = sol[n(t, ϵ, x)]
     lenSolt = length(sol[t])
     sole = sol[ϵ]
@@ -128,11 +130,13 @@ shownPlots = []
 zmin = min(soln[:,:,:]...)
 zmax = max(soln[:,:,:]...)
 
+# Make gif.
 anim = @animate for i in 1:lenSolt
     # camera=(azimuthal, elevation), azimuthal is left-handed rotation about +ve z  e.g. (80, 50)
     plot = surface(sole, solx, transpose(soln[i, :, :]), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)), clims=(zmin, zmax))
     title!("Time = " * Printf.format(Printf.Format("%.2e"),(i-1)/lenSolt * maxTime) * "s")
 
+    # Plot individual plots.
     if i in shownPlots
         display(plot)
     end

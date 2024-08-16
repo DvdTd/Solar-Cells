@@ -105,6 +105,7 @@ if shouldCalcNew || !isfile(jldFilePath)
            DΔ(n(t, ϵ, x, deltaRange[1])) ~ 0.0, # n doesn't change with respect to Δ.
            DΔ(n(t, ϵ, x, deltaRange[2])) ~ 0.0] 
 
+    # Solve the equations.
     domains = [t ∈ Interval(0.0, maxTime), ϵ ∈ Interval(energyRange[1], energyRange[2]), x ∈ Interval(positionRange[1], positionRange[2]), Δ ∈ Interval(deltaRange[1], deltaRange[2])]
     @named pde_system = PDESystem(eq, bcs, domains, [t, ϵ, x, Δ], [n(t, ϵ, x, Δ), lightTerm(t, ϵ, x, Δ)])
     order = 2
@@ -113,6 +114,7 @@ if shouldCalcNew || !isfile(jldFilePath)
     prob = MethodOfLines.discretize(pde_system, discretization)
     sol = solve(prob, QNDF(), saveat = maxTime/numPlots, dt=dt)
 
+    # Extract relevant parts of the solution.
     soln = sol[n(t, ϵ, x, Δ)]
     lenSolt = length(sol[t])
     sole = sol[ϵ]
@@ -140,8 +142,9 @@ title!("Initial")
 display(initialPlot)
 shownPlots = []
 
+# Make a gif for each Δ value.
 for j in 1:numDeltaPoints #[1,2,3,numDeltaPoints] # used to show n is independent of delta - MAYBE WANT IT LARGE SO INTEG OVER WHOLE DOMAIN (ALTHOUGH LIMITS ALREADY BIG)
-local zmin = min(soln[:,:,:,j]...)
+    local zmin = min(soln[:,:,:,j]...)
     local zmax = max(soln[:,:,:,j]...)
 
     local anim = @animate for i in 1:lenSolt
@@ -155,5 +158,5 @@ local zmin = min(soln[:,:,:,j]...)
         end
         zlims!(zmin, zmax)
     end
-    display(gif(anim, "drift_diffusion.gif", fps = floor(numPlots/5))) # DONT NEED TO SAVE EACH TIME
+    display(gif(anim, "drift_diffusion.gif", fps = floor(numPlots/5)))
 end

@@ -152,6 +152,7 @@ if shouldCalcNew || !isfile(jldFilePath)
         DϵpB(pB(t, energyRangePB[1], x)) ~ DϵpA(pA(t, energyRangePA[2], x)),
         ] 
 
+    # Solve the equations.
     domains = [t ∈ Interval(0.0, maxTime), ϵnA ∈ Interval(energyRangeNA[1], energyRangeNA[2]), ϵnB ∈ Interval(energyRangeNB[1], energyRangeNB[2]), ϵpA ∈ Interval(energyRangePA[1], energyRangePA[2]), ϵpB ∈ Interval(energyRangePB[1], energyRangePB[2]), x ∈ Interval(positionRange[1], positionRange[2])]
     @named pde_system = PDESystem(eq, bcs, domains, [t, ϵnA, ϵnB, ϵpA, ϵpB, x], [nA(t, ϵnA, x), nB(t, ϵnB, x), pA(t, ϵpA, x), pB(t, ϵpB, x)])
     order = 2
@@ -160,6 +161,7 @@ if shouldCalcNew || !isfile(jldFilePath)
     prob = MethodOfLines.discretize(pde_system, discretization)
     sol = solve(prob, QNDF(), saveat = maxTime/numPlots, dt=dt)
 
+    # Extract relevant parts of the solution.
     soln = hcat(sol[nA(t, ϵnA, x)], sol[nB(t, ϵnB, x)])
     lenSolt = length(sol[t])
     solne = [sol[ϵnA]; sol[ϵnB]]
@@ -185,13 +187,13 @@ else # Read from file
 end
 
 # Plot
-shownPlots = [1,2,3,4,5,6]
 nzmin = min(soln[:,:,:]...)
 nzmax = max(soln[:,:,:]...)
 pzmin = min(solp[:,:,:]...)
 pzmax = max(solp[:,:,:]...)
 
 # Show individual plots.
+shownPlots = [1,2,3,4,5,6]
     
 for i in shownPlots
     plotn = surface(solne, solx, transpose(soln[i, :, :]), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)), clims=(nzmin, nzmax), legend = :none)
@@ -206,6 +208,7 @@ for i in shownPlots
     display(plotnp)
 end
 
+# Make gif.
 anim = @animate for i in 1:lenSolt
     # camera=(azimuthal, elevation), azimuthal is left-handed rotation about +ve z  e.g. (80, 50)
     plotn = surface(solne, solx, transpose(soln[i, :, :]), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)), clims=(nzmin, nzmax), legend = :none)
@@ -216,7 +219,6 @@ anim = @animate for i in 1:lenSolt
 
     plotnp = Plots.plot(plotn, plotp, layout = (1,2))
     title!("Time = " * Printf.format(Printf.Format("%.2e"),(i-1)/lenSolt * maxTime) * "s")
-    # , zscale=:ln ???
 end
 display(gif(anim, "drift_diffusion.gif", fps = floor(numPlots/gifTime)))
 

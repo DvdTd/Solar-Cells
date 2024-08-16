@@ -166,6 +166,7 @@ if shouldCalcNew || !isfile(jldFilePath)
         DϵB(nB(t, energyRangeB[2], x)) ~ DϵC(nC(t, energyRangeC[1], x)),
         ] 
 
+    # Solve the equations.
     domains = [t ∈ Interval(0.0, maxTime), ϵA ∈ Interval(energyRangeA[1], energyRangeA[2]), ϵB ∈ Interval(energyRangeB[1], energyRangeB[2]), ϵC ∈ Interval(energyRangeC[1], energyRangeC[2]), x ∈ Interval(positionRange[1], positionRange[2])]
     @named pde_system = PDESystem(eq, bcs, domains, [t, ϵA, ϵB, ϵC, x], [nA(t, ϵA, x), nB(t, ϵB, x), nC(t, ϵC, x)])
     order = 2
@@ -174,6 +175,7 @@ if shouldCalcNew || !isfile(jldFilePath)
     prob = MethodOfLines.discretize(pde_system, discretization)
     sol = solve(prob, QNDF(), saveat = maxTime/numPlots, dt=dt)
 
+    # Extract relevant parts of the solution.
     soln = hcat(sol[nA(t, ϵA, x)], sol[nB(t, ϵB, x)], sol[nC(t, ϵC, x)])
     lenSolt = length(sol[t])
     sole = [sol[ϵA]; sol[ϵB]; sol[ϵC]]
@@ -201,6 +203,7 @@ shownPlots = []
 zmin = min(soln[:,:,:]...)
 zmax = max(soln[:,:,:]...)
 
+# Make gif.
 anim = @animate for i in 1:lenSolt
     
     # camera=(azimuthal, elevation), azimuthal is left-handed rotation about +ve z  e.g. (80, 50)
@@ -208,6 +211,7 @@ anim = @animate for i in 1:lenSolt
 
     title!("Time = " * Printf.format(Printf.Format("%.2e"),(i-1)/lenSolt * maxTime) * "s")
 
+    # Plot individual plots.
     if i in shownPlots
         display(plot)
     end

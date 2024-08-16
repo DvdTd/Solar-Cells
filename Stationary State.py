@@ -29,17 +29,18 @@ sigmaTilde = np.sqrt(sigma**2 + 2*Lambda/beta)
 dEnergy = (energyRange[1] - energyRange[0])/numEnergyPoints
 dPosition = (positionRange[1] - positionRange[0])/numPositionPoints
 
+# Function produces a normalised Gaussian.
 def PositionBC(energy):
     width = 1
-    # return 1
     return np.e**(-energy**2/2*(width)**(-2))/width*(2*np.pi)**(-1/2)
 
-
+# Set up grid of points.
 mesh = fp.Grid2D(dx=dEnergy, dy=dPosition, nx=numEnergyPoints, ny=numPositionPoints) + ((energyRange[0],), (positionRange[0],))
-
 n = fp.CellVariable(name="n", mesh=mesh) # , hasOld=True
 x = mesh.cellCenters[0]
 y = mesh.cellCenters[1]
+
+# Define the equation.
 EBar = Lambda * sigmaTilde**(-2) * (2/beta * (x - Ec) + sigma**2)
 SecondDerivativeMatrixCoeff =  K[dimension-1]/2 * fp.Variable(value=((1, 0), (0, 0))) + C[dimension-1]*(EBar**2 + 2*Lambda*sigma**2/beta*sigmaTilde**(-2)) * fp.Variable(value=((0, 0), (0, 1)))
 eq = (K[dimension-1]*beta/2*F[0] * n.grad[0] - C[dimension-1]*EBar*n.grad[1] + fp.DiffusionTerm(SecondDerivativeMatrixCoeff) == 0)
@@ -52,8 +53,6 @@ n.constrain(PositionBC(x[0:numEnergyPoints]) - PositionBC(x[0]), mesh.facesRight
 # Energy BCs
 n.constrain(0, where=mesh.facesTop)
 n.constrain(0, where=mesh.facesBottom)
-
-
 # n.faceGrad.constrain(0, where=mesh.facesTop) # =100000 for 700x700 gives folds
 # n.faceGrad.constrain(0, where=mesh.facesBottom)
 # n.faceGrad.constrain(0, where=mesh.facesLeft)

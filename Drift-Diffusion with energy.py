@@ -27,6 +27,7 @@ positionRange = [-10, 10] # solar cell about 10cm
 numEnergyPoints = 100
 numPositionPoints = 100
 
+# Standard.
 dt = 1e-11# 5e-4#1e-11
 maxTime = 5e-6# 1e1#5e-6
 F = [-1e5] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
@@ -52,14 +53,16 @@ plotType = "mesh" # Options: mesh, colour2d
 shouldForceNewFile = False
 
 
-# Select initial field
+# Select initial field:
 # initialField = f"{np.e}**(-(x-0.4)**2)"
 # initialField = f"{np.e}**(-(x)**2/30-(y)**2)"
 # initialField = f"{np.e}**(-(y)**2)"
 # initialField = f"( {np.e}**(-(x)**2/2) - {np.e}**(-({energyRange[0]})**2/2) ) * ( (y - {positionRange[0]}) / ({positionRange[1]} - {positionRange[0]})  )"
 initialField = f"{np.e}**(-(y)**2/2) * (2 * {np.pi}**(-0.5))"
 
+
 def calculatePDE(dt=dt, maxTime=maxTime, F=F, sigma=sigma, Lambda=Lambda, energyRange=energyRange, positionRange=positionRange):
+    # Set up coefficient values.
     K = [1/4*gamma**(-3), 3*np.pi/8*gamma**(-4), np.pi*gamma**(-5)]
     C = [gamma**(-1), np.pi/2*gamma**(-2), np.pi*gamma**(-3)]
     beta = 1/(kb*T) * eCharge # multiply by charge to get eV units
@@ -75,17 +78,19 @@ def calculatePDE(dt=dt, maxTime=maxTime, F=F, sigma=sigma, Lambda=Lambda, energy
         dotGradTerm = f"{F[0]} * d_dy(n) + {F[1]} * d_dz(n)" 
         laplaceTerm = "d2_dy2(n) + d2_dz2(n)"
 
+    # Boundary conditions and equation specification.
     bc_x =  "dirichlet"
     bc_y =  "neumann" 
     eq = pde.PDE({"n": f"{factor} * ( {K[dimension-1]}*{beta}/2*{dotGradTerm} + {K[dimension-1]}/2*{laplaceTerm} - {C[dimension-1]}*{EBar}*d_dx(n) + {C[dimension-1]}*({EBar}**2 + 2*{Lambda}*{sigma}**2/{beta}*{sigmaTilde}**(-2))*d2_dx2(n) )"}, bc=[bc_x, bc_y])               
     grid = pde.CartesianGrid([energyRange, positionRange], [numEnergyPoints,numPositionPoints], periodic=[False, False])
 
-    # Use initial field, or the result of running it in the past.
+    # Use initial field, or the result from running it in the past.
     if taskType == "longEvo" and json_object["pastResult"] != None:
         state = pde.ScalarField.from_state(pde.ScalarField.from_expression(grid, initialField).attributes, np.array(json_object["pastResult"]))
     else:
         state = pde.ScalarField.from_expression(grid, initialField)
 
+    # Solve and store result.
     storage = pde.MemoryStorage()
     if numPlots == 1:
         timeBetweenRecords = maxTime
@@ -106,6 +111,7 @@ def plotGraphs(energies, positions, res, storage, numPlots, plotType, maxGraphsP
     else:
         result = storage.items()
 
+    # Option to plot a surface mesh or a 2D colour plot.
     if plotType == "mesh":
         X, Y = np.meshgrid(energies, positions)
         numGraph = 1
@@ -130,8 +136,6 @@ def plotGraphs(energies, positions, res, storage, numPlots, plotType, maxGraphsP
 
         numGraph = 0
 
-        
-
         for time, field in storage.items():
             if taskType == "longEvo":
                 time += json_object["cumulativeTime"] - maxTime
@@ -154,13 +158,11 @@ def plotGraphs(energies, positions, res, storage, numPlots, plotType, maxGraphsP
     plt.show()
 
 
-
-    
+# Set up JSON storage file.
 fileName = "longEvolutionData.json"
 current_dir = os.path.dirname(__file__)
 filePath = os.path.join(current_dir, fileName)
 
-# Create new JSON
 if not os.path.isfile(filePath) or shouldForceNewFile:
     jsonDict = {
         "constants": {
@@ -189,6 +191,7 @@ if not os.path.isfile(filePath) or shouldForceNewFile:
     with open(filePath, "w") as outfile:
         outfile.write(json_object)
         print("Created json")
+
 
 
 # Main calculation
