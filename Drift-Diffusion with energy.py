@@ -18,24 +18,33 @@ nu0 = 1
 g1 = 1
 sigma = 0.1 # Tress p51 0.05->0.15 eV
 Ec = 0 # Traps p5 -5.2eV although just offsets all energy
-Lambda = 9e-2#9e-5 # 9e-6 or 9e-5eV Alexandros
-T = 300 # Tress p63 300K
+Lambda = 9e-5#9e-5 # 9e-6 or 9e-5eV Alexandros
+T = 300 # Tress p63 300
 dimension = 1 # accepts 1 or 2
+
+energyRange = [-1, 1] # ±infinity but cutoff when it goes to zeros
+positionRange = [-10, 10] # solar cell about 10cm
+numEnergyPoints = 100
+numPositionPoints = 100
 
 dt = 1e-11# 5e-4#1e-11
 maxTime = 5e-6# 1e1#5e-6
 F = [-1e5] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
 
+# Travelling wave.
+# dt = 1e-11# 5e-4#1e-11
+# maxTime = 5e-6# 1e1#5e-6
+# F = [-1e5]
+# positionRange = [-130, 30]
+# numEnergyPoints = 51
+# numPositionPoints = 17
+
+# Diffusion.
 # dt = 1e-5
 # maxTime = 10e-1
-# F = [0e5] 
+# F = [2e-2]  # [0e5] 
 
-energyRange = [-1, 1] # ±infinity but cutoff when it goes to zeros
-positionRange = [-130, 30] # solar cell about 10cm
-numEnergyPoints = 51
-numPositionPoints = 17 
-
-numPlots = 10 # Number of plots, minimum of 1.
+numPlots = 4 # Number of plots, minimum of 1.
 maxGraphsPerRow = 5
 
 taskType = "timeEvo" # Options: timeEvo, longEvo
@@ -47,7 +56,6 @@ shouldForceNewFile = False
 # initialField = f"{np.e}**(-(x-0.4)**2)"
 # initialField = f"{np.e}**(-(x)**2/30-(y)**2)"
 # initialField = f"{np.e}**(-(y)**2)"
-# initialField = f"cos(2*{np.pi}/({positionRange[1]} - {positionRange[0]})*y)"
 # initialField = f"( {np.e}**(-(x)**2/2) - {np.e}**(-({energyRange[0]})**2/2) ) * ( (y - {positionRange[0]}) / ({positionRange[1]} - {positionRange[0]})  )"
 initialField = f"{np.e}**(-(y)**2/2) * (2 * {np.pi}**(-0.5))"
 

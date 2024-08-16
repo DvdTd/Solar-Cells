@@ -1,3 +1,8 @@
+"""
+Using MethodOfLines with the drift-diffusion equations and the integral light interaction term.
+Problems: requiring Δ argument for integral didn't work physically and couldn't implement n(ϵ) vs n(ϵ+Δ).
+"""
+
 using MethodOfLines, ModelingToolkit, OrdinaryDiffEq, DomainSets, Plots, Printf, JLD
 
 d = 2 # dimension

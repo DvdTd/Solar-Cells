@@ -1,3 +1,8 @@
+"""
+Using HighDimPDE with the drift-diffusion equations and began implementing the integral light interaction term in f(x, y, v_x, v_y, ∇v_x, ∇v_y, p, t).
+Problems: Only Neumann BCs allowed. σ as a vector didn't allow drift-diffusion equations, setting batch_size=2 allows a matrix but the result is unlikely to be what's wanted.
+"""
+
 using HighDimPDE, Random, Plots, SpecialFunctions, Flux
 Random.seed!(1234) # append ! to names of functions that modify their arguments
 

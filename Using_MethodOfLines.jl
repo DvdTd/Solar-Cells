@@ -1,3 +1,8 @@
+"""
+Using MethodOfLines with the drift-diffusion equations and the differential light interaction term.
+Problems: currently, E = EH if ϵ>Eav else = EL. When put into the erf term, effectively gives a step function which is hard to explain physically.
+"""
+
 using MethodOfLines, ModelingToolkit, OrdinaryDiffEq, DomainSets, Plots, Printf, JLD
 import SpecialFunctions: erf
 

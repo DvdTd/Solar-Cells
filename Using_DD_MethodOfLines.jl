@@ -1,3 +1,8 @@
+"""
+Using MethodOfLines with the drift-diffusion equations with Ec=0 in Ebar and the Gaussian (line 64, line 74/75)
+"""
+
+
 using MethodOfLines, ModelingToolkit, OrdinaryDiffEq, DomainSets, Plots, Printf, JLD
 
 d = 2 # dimension
