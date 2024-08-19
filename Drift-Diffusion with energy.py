@@ -13,7 +13,7 @@ import json
 # Constants
 kb = 1.3806e-23
 eCharge = 1.602e-19
-gamma = 0.788 # Bilayers p8 0.788
+gamma = 1e8 # Baranovskii 10^8 cm^-1
 nu0 = 1
 g1 = 1
 sigma = 0.1 # Tress p51 0.05->0.15 eV
@@ -24,13 +24,23 @@ dimension = 1 # accepts 1 or 2
 
 energyRange = [-1, 1] # ±infinity but cutoff when it goes to zeros
 positionRange = [-10, 10] # solar cell about 10cm
-numEnergyPoints = 100
-numPositionPoints = 100
+numEnergyPoints = 50
+numPositionPoints = 50
 
 # Standard.
 dt = 1e-11# 5e-4#1e-11
 maxTime = 5e-6# 1e1#5e-6
 F = [-1e5] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
+
+# Testing 10^8 gamma
+dt = 9.6e7# 5e-4#1e-11
+maxTime = 5e12# 1e1#5e-6
+F = [-1e5]
+# ^ This makes peaks a bit like the Julia ones.
+
+dt = 1e-7# 5e-4#1e-11
+maxTime = 5e-2# 1e1#5e-6
+F = [-1e5/eCharge]
 
 # Travelling wave.
 # dt = 1e-11# 5e-4#1e-11
@@ -45,8 +55,8 @@ F = [-1e5] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
 # maxTime = 10e-1
 # F = [2e-2]  # [0e5] 
 
-numPlots = 4 # Number of plots, minimum of 1.
-maxGraphsPerRow = 5
+numPlots = 8 # Number of plots, minimum of 1.
+maxGraphsPerRow = 4
 
 taskType = "timeEvo" # Options: timeEvo, longEvo
 plotType = "mesh" # Options: mesh, colour2d
@@ -56,9 +66,9 @@ shouldForceNewFile = False
 # Select initial field:
 # initialField = f"{np.e}**(-(x-0.4)**2)"
 # initialField = f"{np.e}**(-(x)**2/30-(y)**2)"
-# initialField = f"{np.e}**(-(y)**2)"
+initialField = f"{np.e}**(-(y)**2)"
 # initialField = f"( {np.e}**(-(x)**2/2) - {np.e}**(-({energyRange[0]})**2/2) ) * ( (y - {positionRange[0]}) / ({positionRange[1]} - {positionRange[0]})  )"
-initialField = f"{np.e}**(-(y)**2/2) * (2 * {np.pi}**(-0.5))"
+# initialField = f"{np.e}**(-(y)**2/2) * (2 * {np.pi}**(-0.5))"
 
 
 def calculatePDE(dt=dt, maxTime=maxTime, F=F, sigma=sigma, Lambda=Lambda, energyRange=energyRange, positionRange=positionRange):

@@ -1,5 +1,5 @@
 """
-Using MethodOfLines with the drift-diffusion equations with Ec=0 in Ebar and the Gaussian (line 64, line 74/75)
+Using MethodOfLines with the drift-diffusion equations with Ec=0 in Ebar and the Gaussian (around line 64, line 74/75)
 """
 
 
@@ -9,7 +9,7 @@ d = 2 # dimension
 kb = 1.3806f-23
 eCharge = 1.602f-19
 hbar = 1.054571817f-34 / eCharge # J⋅s to  eV⋅s
-gamma = 0.788 # Bilayers p8 0.788
+gamma = 1f8 # cm^-1
 nu0 = 1 # look in Tress
 g1 = 1 # num states per volume 5f20 metres^-3 => * length * thickness => about 1f16 
 sigma = 0.13 # Tress p51 0.05->0.15 eV
@@ -19,35 +19,39 @@ K = [1/4*gamma^(-3), 3*π/8*gamma^(-4), π*gamma^(-5)][clamp(d-1, 1, 3)]
 C = [gamma^(-1), π/2*gamma^(-2), π*gamma^(-3)][clamp(d-1, 1, 3)]
 beta = 1/(kb*T) * eCharge # multiply by charge to get eV units
 sigmaTilde = sqrt(sigma^2 + 2*Lambda/beta)
-# Light interaction Constants
-c = 299792458
-mu = 1.25663706f-6
 EH = -5.2
 EL = -3.5
 Eav = (EL+EH)/2 # = -4.35
 E = 1.7
-muϵϵ = 7.5 * 3.33564f-30
-A = 1.5
-B = 7f-3
-N = 5f20
-solidAngleCoeff = 1f-5
 numPlots = 100
 energyRange = [-1.5 + Eav, 1.5 + Eav] # ±infinity but cutoff when it goes to zeros
-maxPos = 60.0
+maxPos = 8.0
 positionRange = [-maxPos, maxPos] 
-numEnergyPoints = 13
-numPositionPoints = 13 # odd is good
+numEnergyPoints = 70
+numPositionPoints = 100 # Odd is good so that there is a point at the centre
 
 # F = [1f5][1]
 # dt = 1f-10# 5f-4#1f-11
-# maxTime = 5f-0 #5f-6
-cameraTup = (10, 50)#(10,-5)#(85, 60) #  
+# maxTime = 2f-3 #5f-6
 
 # Small F parameters
-F = [1f-1][1]
-dt = 1f-1
-maxTime = 10e3
+# F = [1f-1][1]
+# dt = 1f-1
+# maxTime = 10e3
+
+# New gamma
+F = [1f5/eCharge][1]
+dt = 1f-6# 5f-4#1f-11
+maxTime = 2f2 #5f-6
+
+# camera=(azimuthal, elevation), azimuthal is left-handed rotation about +ve z  e.g. (80, 50)
+cameraTup = (10, 50)# normal
+cameraTup = (10,-5) # flat angle
 # cameraTup = (40, 55)
+# cameraTup = (10, 80)
+cameraTup = (85, 60)
+# cameraTup = (85, 40)
+# cameraTup = (25, 50)
 
 @parameters t, ϵ, x
 @variables n(..)
@@ -61,7 +65,7 @@ shouldCalcNew = true # Gives the option to change the plot parameters without re
 jldFilePath = "/Users/david/Documents/Python/Solar Cells/MethodOfLinesData.jld"
 
 step(x, x0) =  (1+sign(x-x0))/2 
-Ec(ϵ) = 0 #EH + (EL - EH)*step(ϵ, Eav)
+Ec(ϵ) = EH #EH + (EL - EH)*step(ϵ, Eav)
 
 if shouldCalcNew || !isfile(jldFilePath)
     normalGaussian(x, mean, width) = (2*π)^(-0.5)*width^(-2) * exp(- sum((x - mean).^2 .* [0.5*width^(-2), 0]))
@@ -72,7 +76,7 @@ if shouldCalcNew || !isfile(jldFilePath)
 
     eq = [
         # Dt(n(t, ϵ, x)) ~ exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-0.5) * ECgaussian(ϵ, EH+Lambda, EL+Lambda, sigmaTilde) * (  K*beta/2*F * Dx(n(t, ϵ, x)) + K/2 * Dxx(n(t, ϵ, x)) - C*Ebar(ϵ) * Dϵ(n(t, ϵ, x)) + C*(Ebar(ϵ)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * Dϵϵ(n(t, ϵ, x)) )
-        Dt(n(t, ϵ, x)) ~ exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-0.5) * ECgaussian(ϵ, Lambda, Lambda, sigmaTilde) * (  K*beta/2*F * Dx(n(t, ϵ, x)) + K/2 * Dxx(n(t, ϵ, x)) - C*Ebar(ϵ) * Dϵ(n(t, ϵ, x)) + C*(Ebar(ϵ)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * Dϵϵ(n(t, ϵ, x)) )
+        Dt(n(t, ϵ, x)) ~ exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-0.5) * ECgaussian(ϵ, EH + Lambda, EH + Lambda, sigmaTilde) * (  K*beta/2*F * Dx(n(t, ϵ, x)) + K/2 * Dxx(n(t, ϵ, x)) - C*Ebar(ϵ) * Dϵ(n(t, ϵ, x)) + C*(Ebar(ϵ)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * Dϵϵ(n(t, ϵ, x)) )
 
         ]
 
@@ -122,10 +126,10 @@ else # Read from file
 end
 
 # Plot
-initialPlot = surface(sole, solx, Surface((sole,solx)->initialFunc(sole, solx), sole, solx), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)))
-title!("Initial")
-display(initialPlot)
-shownPlots = []
+# initialPlot = surface(sole, solx, Surface((sole,solx)->initialFunc(sole, solx), sole, solx), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)))
+# title!("Initial")
+# display(initialPlot)
+shownPlots = [80, 90, 99]
 
 zmin = min(soln[:,:,:]...)
 zmax = max(soln[:,:,:]...)
