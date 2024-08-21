@@ -1,6 +1,5 @@
 """
 Using MethodOfLines with the drift-diffusion equations and the differential light interaction term - coupled equations n and p.
-Problems: currently, E = EH if ϵ>Eav else = EL. When put into the erf term, effectively gives a step function which is hard to explain physically.
 """
 
 using MethodOfLines, ModelingToolkit, OrdinaryDiffEq, DomainSets, Plots, Printf, JLD
@@ -10,7 +9,7 @@ d = 2 # dimension
 kb = 1.3806f-23
 eCharge = 1.602f-19
 hbar = 1.054571817f-34 / eCharge # J⋅s to  eV⋅s
-gamma = 0.788 # Bilayers p8 0.788
+gamma = 1f8#0.788 # Bilayers p8 0.788
 nu0 = 1
 g1 = 1
 sigma = 0.13 # Tress p51 0.05->0.15 eV
@@ -50,8 +49,8 @@ EL = -3.5
 Eav = (EL+EH)/2 # = -4.35
 E = 1.7 # XXX change to ϵ + F * x + const <- might need product rule...
 numPlots = 100
-gifTime = 10
-maxPos = 20.0
+gifTime = 10 # seconds
+maxPos = 10.0
 positionRange = [-maxPos, maxPos] 
 numPositionPoints = 15 # odd is good
 
@@ -60,20 +59,30 @@ energyRangeNA = [EH - energy_tail_length, EL]
 energyRangeNB = [EL, EL + energy_tail_length]
 energyRangePA = [EH - energy_tail_length, EH]
 energyRangePB = [EH, EL + energy_tail_length]
+numEnergyPoints = 10 # * 2 for A and B, * 2 for n and p
 
-numEnergyPoints = 11 # * 2 for A and B, * 2 for n and p
-
-# camera=(azimuthal, elevation), azimuthal is left-handed rotation about +ve z  e.g. (80, 50)
-F = 1f5
-dt = 1f-12# 5f-4#1f-11
-maxTime = 2f-3 #5f-6
-cameraTup = (10, 50)#(10, 50)#(10,-5)#(85, 60) #  (90,40)
+# F = 1f5
+# dt = 1f-12# 5f-4#1f-11
+# maxTime = 2f-3 #5f-6
 
 # Small F parameters
 # F = 0f-1
 # dt = 1f-4
 # maxTime = 3e3
+
+# New gamma
+F = 1f5/eCharge
+dt = 1f-6# 5f-4#1f-11
+maxTime = 2f2 #5f-6
+
+# camera=(azimuthal, elevation), azimuthal is left-handed rotation about +ve z  e.g. (80, 50)
+cameraTup = (10, 50)# normal
+cameraTup = (10,-5) # flat angle
 # cameraTup = (40, 55)
+# cameraTup = (10, 80)
+cameraTup = (85, 60)
+# cameraTup = (85, 40)
+# cameraTup = (25, 50)
 
 @parameters t, ϵnA, ϵnB, ϵpA, ϵpB, x
 @variables nA(..) nB(..) pA(..) pB(..) 
@@ -113,8 +122,15 @@ if shouldCalcNew || !isfile(jldFilePath)
     
     # Initial: Gaussian at mean
     (posWidth, energyWidth) = (1, 0.4) # (1, 3) (1, 0.4)
-    initialFunc(ϵ, x, mean, ) = (normalGaussian(x, 0, posWidth) - normalGaussian(positionRange[1], 0, posWidth)) * (  normalGaussian(ϵ, mean, energyWidth) - min(normalGaussian(energyRangeNA[1], mean, energyWidth), normalGaussian(energyRangeNB[2], mean, energyWidth))  )
+    initialFunc(ϵ, x, mean) = (normalGaussian(x, 0, posWidth) - normalGaussian(positionRange[1], 0, posWidth)) * (  normalGaussian(ϵ, mean, energyWidth) - min(normalGaussian(energyRangeNA[1], mean, energyWidth), normalGaussian(energyRangeNB[2], mean, energyWidth))  )
    
+    # Initial: Fermi-Dirac energy
+    initialFunc(ϵ, x, mean) = (normalGaussian(x, 0, posWidth) - normalGaussian(positionRange[1], 0, posWidth)) * (1/(exp((ϵ-Eav)/kbT)+1))
+
+    # Initial: Maxwell-Boltzmann energy
+    # initialFunc(ϵ, x, mean) = (normalGaussian(x, 0, posWidth) - normalGaussian(positionRange[1], 0, posWidth)) * (1/(exp((ϵ-Eav)/kbT)))
+
+
     bcs = [
         nA(0.0, ϵnA, x) ~ initialFunc(ϵnA, x, EH),
         nB(0.0, ϵnB, x) ~ initialFunc(ϵnB, x, EH),
@@ -192,8 +208,8 @@ nzmax = max(soln[:,:,:]...)
 pzmin = min(solp[:,:,:]...)
 pzmax = max(solp[:,:,:]...)
 
-# Show individual plots.
-shownPlots = [1,2,3,4,5,6]
+# Show individual plots e.g. [1,2,3,20] or []
+shownPlots = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     
 for i in shownPlots
     plotn = surface(solne, solx, transpose(soln[i, :, :]), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)), clims=(nzmin, nzmax), legend = :none)

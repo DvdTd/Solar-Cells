@@ -30,26 +30,26 @@ positionRange = [-maxPos, maxPos]
 numEnergyPoints = 70
 numPositionPoints = 100 # Odd is good so that there is a point at the centre
 
-# F = [1f5][1]
+# F = 1f5
 # dt = 1f-10# 5f-4#1f-11
 # maxTime = 2f-3 #5f-6
 
 # Small F parameters
-# F = [1f-1][1]
+# F = 1f-1
 # dt = 1f-1
 # maxTime = 10e3
 
 # New gamma
-F = [1f5/eCharge][1]
+F = 1f5/eCharge
 dt = 1f-6# 5f-4#1f-11
 maxTime = 2f2 #5f-6
 
 # camera=(azimuthal, elevation), azimuthal is left-handed rotation about +ve z  e.g. (80, 50)
-cameraTup = (10, 50)# normal
-cameraTup = (10,-5) # flat angle
+# cameraTup = (10, 50)# normal
+# cameraTup = (10,-5) # flat angle
 # cameraTup = (40, 55)
 # cameraTup = (10, 80)
-cameraTup = (85, 60)
+cameraTup = (70, 50)
 # cameraTup = (85, 40)
 # cameraTup = (25, 50)
 
@@ -61,8 +61,11 @@ Dx = Differential(x)
 Dxx = Differential(x)^2
 Dϵϵ = Differential(ϵ)^2
 
-shouldCalcNew = true # Gives the option to change the plot parameters without recalculating the solution.
+shouldCalcNew = false # Gives the option to change the plot parameters without recalculating the solution.
 jldFilePath = "/Users/david/Documents/Python/Solar Cells/MethodOfLinesData.jld"
+# File with good example of drift.
+# jldFilePath = "/Users/david/Documents/Python/Solar Cells/MethodOfLinesDataDrift.jld"
+
 
 step(x, x0) =  (1+sign(x-x0))/2 
 Ec(ϵ) = EH #EH + (EL - EH)*step(ϵ, Eav)
@@ -76,6 +79,7 @@ if shouldCalcNew || !isfile(jldFilePath)
 
     eq = [
         # Dt(n(t, ϵ, x)) ~ exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-0.5) * ECgaussian(ϵ, EH+Lambda, EL+Lambda, sigmaTilde) * (  K*beta/2*F * Dx(n(t, ϵ, x)) + K/2 * Dxx(n(t, ϵ, x)) - C*Ebar(ϵ) * Dϵ(n(t, ϵ, x)) + C*(Ebar(ϵ)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * Dϵϵ(n(t, ϵ, x)) )
+        # Gaussian centred at just EH:
         Dt(n(t, ϵ, x)) ~ exp(-beta*E)*nu0*g1*(2*pi)^(-0.5)*sigmaTilde^(-0.5) * ECgaussian(ϵ, EH + Lambda, EH + Lambda, sigmaTilde) * (  K*beta/2*F * Dx(n(t, ϵ, x)) + K/2 * Dxx(n(t, ϵ, x)) - C*Ebar(ϵ) * Dϵ(n(t, ϵ, x)) + C*(Ebar(ϵ)^2 + 2*Lambda*sigma^2/beta*sigmaTilde^(-2)) * Dϵϵ(n(t, ϵ, x)) )
 
         ]

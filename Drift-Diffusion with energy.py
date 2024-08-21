@@ -28,19 +28,28 @@ numEnergyPoints = 50
 numPositionPoints = 50
 
 # Standard.
-dt = 1e-11# 5e-4#1e-11
-maxTime = 5e-6# 1e1#5e-6
-F = [-1e5] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
+# dt = 1e-11# 5e-4#1e-11
+# maxTime = 5e-6# 1e1#5e-6
+# F = [1e5] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
 
 # Testing 10^8 gamma
-dt = 9.6e7# 5e-4#1e-11
-maxTime = 5e12# 1e1#5e-6
-F = [-1e5]
-# ^ This makes peaks a bit like the Julia ones.
+# dt = 9.6e7# 5e-4#1e-11
+# maxTime = 5e12# 1e1#5e-6
+# F = [-1e5]
+# ^ This makes peaks a bit like the Julia ones (rises to infinity without travelling).
 
-dt = 1e-7# 5e-4#1e-11
-maxTime = 5e-2# 1e1#5e-6
-F = [-1e5/eCharge]
+# 10^8 gamma, rescale F
+dt = 5e-8# 5e-4#1e-11
+maxTime = 3e-2# 1e1#5e-6
+F = [1e5/eCharge]
+
+# 10^8 gamma, nanometres
+# positionRange = [-1e-6, 1e-6]
+# dt = 1e-7# 5e-4#1e-11
+# maxTime = 5e-2# 1e1#5e-6
+# F = [-1e5]
+# initialField = f"{np.e}**(-(y * 10**(6))**2)"
+
 
 # Travelling wave.
 # dt = 1e-11# 5e-4#1e-11
@@ -55,7 +64,19 @@ F = [-1e5/eCharge]
 # maxTime = 10e-1
 # F = [2e-2]  # [0e5] 
 
-numPlots = 8 # Number of plots, minimum of 1.
+# Stationary state evolution
+# gamma = 0.788
+# dt = 1e-12# 5e-4#1e-11
+# maxTime = 1e-6# 1e1#5e-6
+# F = [1e4]
+# energyRange = [-5, 5] # ±infinity but cutoff when it goes to zeros
+# positionRange = [-5, 5]
+# numEnergyPoints = 100
+# numPositionPoints = 100
+# initialField = f"( {np.e}**(-(x)**2/2) - {np.e}**(-({energyRange[0]})**2/2) ) * ( (y - {positionRange[0]}) / ({positionRange[1]} - {positionRange[0]})  )"
+
+
+numPlots = 1 # Number of plots, minimum of 1.
 maxGraphsPerRow = 4
 
 taskType = "timeEvo" # Options: timeEvo, longEvo
@@ -67,9 +88,7 @@ shouldForceNewFile = False
 # initialField = f"{np.e}**(-(x-0.4)**2)"
 # initialField = f"{np.e}**(-(x)**2/30-(y)**2)"
 initialField = f"{np.e}**(-(y)**2)"
-# initialField = f"( {np.e}**(-(x)**2/2) - {np.e}**(-({energyRange[0]})**2/2) ) * ( (y - {positionRange[0]}) / ({positionRange[1]} - {positionRange[0]})  )"
 # initialField = f"{np.e}**(-(y)**2/2) * (2 * {np.pi}**(-0.5))"
-
 
 def calculatePDE(dt=dt, maxTime=maxTime, F=F, sigma=sigma, Lambda=Lambda, energyRange=energyRange, positionRange=positionRange):
     # Set up coefficient values.
