@@ -159,5 +159,5 @@ anim = @animate for i in 1:lenSolt
     end
     zlims!(zmin, zmax)
 end
-display(gif(anim, "drift_diffusion.gif", fps = floor(numPlots/5)))
+display(gif(anim, "MethodOfLines.gif", fps = floor(numPlots/5)))
 

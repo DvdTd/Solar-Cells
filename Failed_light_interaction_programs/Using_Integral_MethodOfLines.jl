@@ -169,5 +169,5 @@ for j in 1:numDeltaPoints #[1,2,3,numDeltaPoints] # used to show n is independen
         end
         zlims!(zmin, zmax)
     end
-    display(gif(anim, "drift_diffusion.gif", fps = floor(numPlots/5)))
+    display(gif(anim, "MethodOfLines.gif", fps = floor(numPlots/5)))
 end
