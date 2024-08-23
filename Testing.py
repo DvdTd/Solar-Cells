@@ -3,3 +3,6 @@ import scipy
 
 print("hi")
 # grid = pde.CartesianGrid([1, 2], [2,2], periodic=[False, False])
+
+x = 2e-39
+print("{:.100f}".format(x))

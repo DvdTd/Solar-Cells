@@ -1,3 +1,11 @@
+"""
+Current problems with FiPy
+- Change gamma to 10^8 and divide F by eCharge. However currently, that gives an unlikely result.
+- BCs don't seem to affect the result much.
+- Changing tolerance and iterations of solver does nothing, although =0 makes the  solution 0.
+- Methods of iteration, time steps and sweeps from https://www.ctcms.nist.gov/fipy/documentation/FAQ.html - RES increases with each sweep so something is UNSTABLE.
+"""
+
 import fipy as fp
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,7 +14,7 @@ from matplotlib import cm
 # Constants
 kb = 1.3806e-23
 eCharge = 1.602e-19
-gamma = 0.788 # Bilayers p8 0.788
+gamma = 0.788
 nu0 = 1
 g1 = 1
 sigma = 0.1 # Tress p51 0.05->0.15 eV
@@ -83,10 +91,3 @@ for i in range(1):
 plt.show()
 
 
-"""
-Current problems with FiPy
-- solution dependent on points used
-- Neumann conditions done automatically as adding them does nothing? making them 10000 does affect it
-- changing tolerance and iterations of solver does nothing, although =0 makes the  solution 0. Means I can’t experiment with how it gets its solution. Doesn’t change an example they gave either.
-- Methods of iteration, time steps and sweeps  from https://www.ctcms.nist.gov/fipy/documentation/FAQ.html - RES increases with each sweep so something is UNSTABLE
-"""

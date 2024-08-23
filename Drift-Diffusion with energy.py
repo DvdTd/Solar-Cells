@@ -1,7 +1,4 @@
-
-# py-pde cartesian is up to 3 dimensions so energy uses x, then y,z left for position.
-
-import pde # import from installing py-pde
+import pde
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -13,70 +10,54 @@ import json
 # Constants
 kb = 1.3806e-23
 eCharge = 1.602e-19
-gamma = 1e8 # Baranovskii 10^8 cm^-1
-nu0 = 1
-g1 = 1
-sigma = 0.1 # Tress p51 0.05->0.15 eV
-Ec = 0 # Traps p5 -5.2eV although just offsets all energy
-Lambda = 9e-5#9e-5 # 9e-6 or 9e-5eV Alexandros
-T = 300 # Tress p63 300
-dimension = 1 # accepts 1 or 2
+gamma = 1e8
+nu0 = 5e19
+g1 = 1e14
+sigma = 0.13
+Ec = 0
+Lambda = 9e-5
+T = 300
+dimension = 1
 
-energyRange = [-1, 1] # ±infinity but cutoff when it goes to zeros
-positionRange = [-10, 10] # solar cell about 10cm
-numEnergyPoints = 50
-numPositionPoints = 50
+energyRange = [-1, 1]
+positionRange = [-10, 10]
+numEnergyPoints = 100
+numPositionPoints = 100
 
-# Standard.
-# dt = 1e-11# 5e-4#1e-11
-# maxTime = 5e-6# 1e1#5e-6
-# F = [1e5] # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
-
-# Testing 10^8 gamma
-# dt = 9.6e7# 5e-4#1e-11
-# maxTime = 5e12# 1e1#5e-6
-# F = [-1e5]
-# ^ This makes peaks a bit like the Julia ones (rises to infinity without travelling).
-
-# 10^8 gamma, rescale F
-dt = 5e-8# 5e-4#1e-11
-maxTime = 3e-2# 1e1#5e-6
-F = [1e5/eCharge]
+# 10^8 gamma, rescaled F
+# dt = 1e-7
+# maxTime = 5e-2
+# F = [1e5/eCharge]
 
 # 10^8 gamma, nanometres
 # positionRange = [-1e-6, 1e-6]
-# dt = 1e-7# 5e-4#1e-11
-# maxTime = 5e-2# 1e1#5e-6
+# dt = 1e-7
+# maxTime = 5e-2
 # F = [-1e5]
 # initialField = f"{np.e}**(-(y * 10**(6))**2)"
 
+# new gamma, nu0, g1
+dt = 2e-39
+maxTime = dt * 1e4
+F = [1e5/eCharge]
 
-# Travelling wave.
-# dt = 1e-11# 5e-4#1e-11
-# maxTime = 5e-6# 1e1#5e-6
-# F = [-1e5]
-# positionRange = [-130, 30]
-# numEnergyPoints = 51
-# numPositionPoints = 17
+# dt = 2.85e-26 # 2.95e-26 NaN after 1 graph. 2.9e-26 has a spike on 2nd graph before NaN
+# maxTime = dt * 1e4
+# F = [0]
 
-# Diffusion.
-# dt = 1e-5
-# maxTime = 10e-1
-# F = [2e-2]  # [0e5] 
-
-# Stationary state evolution
+# Diffusion - seen before gamma was changed to 10^8.
 # gamma = 0.788
-# dt = 1e-12# 5e-4#1e-11
-# maxTime = 1e-6# 1e1#5e-6
-# F = [1e4]
-# energyRange = [-5, 5] # ±infinity but cutoff when it goes to zeros
-# positionRange = [-5, 5]
-# numEnergyPoints = 100
-# numPositionPoints = 100
-# initialField = f"( {np.e}**(-(x)**2/2) - {np.e}**(-({energyRange[0]})**2/2) ) * ( (y - {positionRange[0]}) / ({positionRange[1]} - {positionRange[0]})  )"
+g1 = 1
+nu0 = 1
+dt = 1e-5
+maxTime = 1e0
+F = [0e-2]  # [2e-2] 
 
+dt = 1.5e7
+maxTime = 1.5e12
+# dt = 1.5e7, maxTime = 1.5e14 tried but didn't move
 
-numPlots = 1 # Number of plots, minimum of 1.
+numPlots = 8 # Number of plots, minimum of 1.
 maxGraphsPerRow = 4
 
 taskType = "timeEvo" # Options: timeEvo, longEvo
@@ -89,12 +70,13 @@ shouldForceNewFile = False
 # initialField = f"{np.e}**(-(x)**2/30-(y)**2)"
 initialField = f"{np.e}**(-(y)**2)"
 # initialField = f"{np.e}**(-(y)**2/2) * (2 * {np.pi}**(-0.5))"
+# initialField = f"( {np.e}**(-(x)**2/2) - {np.e}**(-({energyRange[0]})**2/2) ) * ( (y - {positionRange[0]}) / ({positionRange[1]} - {positionRange[0]})  )"
 
 def calculatePDE(dt=dt, maxTime=maxTime, F=F, sigma=sigma, Lambda=Lambda, energyRange=energyRange, positionRange=positionRange):
     # Set up coefficient values.
     K = [1/4*gamma**(-3), 3*np.pi/8*gamma**(-4), np.pi*gamma**(-5)]
     C = [gamma**(-1), np.pi/2*gamma**(-2), np.pi*gamma**(-3)]
-    beta = 1/(kb*T) * eCharge # multiply by charge to get eV units
+    beta = 1/(kb*T) * eCharge
     sigmaTilde = np.sqrt(sigma**2 + 2*Lambda/beta)
 
     factor = f"{nu0}*{g1}*(2*{np.pi})**(-1/2)*{sigmaTilde}**(-2) * {np.e}**(-1/2*{sigmaTilde}**(-2) * (x - {Ec} - {Lambda})**2)"
@@ -132,7 +114,7 @@ def calculatePDE(dt=dt, maxTime=maxTime, F=F, sigma=sigma, Lambda=Lambda, energy
 
 def plotGraphs(energies, positions, res, storage, numPlots, plotType, maxGraphsPerRow=5, maxTime=maxTime, taskType=taskType):
     columns = min(numPlots, maxGraphsPerRow)
-    rows = int(np.ceil(numPlots/5))
+    rows = int(np.ceil(numPlots/maxGraphsPerRow))
 
     # Plot only the last graph, or an even spread
     if numPlots == 1:
@@ -232,7 +214,7 @@ if taskType == "timeEvo":
     positions = np.linspace(positionRange[0], positionRange[1], numPositionPoints)
     times = [time for time, _ in storage.items()]
 
-    plotGraphs(energies, positions, res, storage, numPlots, plotType, maxTime=maxTime)
+    plotGraphs(energies, positions, res, storage, numPlots, plotType, maxTime=maxTime, maxGraphsPerRow=maxGraphsPerRow)
 
 
 elif taskType == "longEvo":
@@ -260,7 +242,7 @@ elif taskType == "longEvo":
 
     print("Read json")
 
-    res, storage = calculatePDE(dt=dt, maxTime=maxTime, F=F, sigma=sigma, Lambda=Lambda, energyRange=energyRange, positionRange=positionRange)
+    res, storage = calculatePDE(dt=dt, maxTime=maxTime, F=F, sigma=sigma, Lambda=Lambda, energyRange=energyRange, positionRange=positionRange, maxGraphsPerRow=maxGraphsPerRow)
 
     # Update JSON with new time and results
     json_object["cumulativeTime"] += maxTime
