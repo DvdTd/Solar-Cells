@@ -62,19 +62,19 @@ energyRangePB = [EL, EL + energy_tail_length]
 energyRangeNA = [EH - energy_tail_length, EH]
 energyRangeNB = [EH, EL + energy_tail_length]
 
-numPositionPoints = 15 # Odd is good so central peak is calculated
-numEnergyPoints = 11 # Effectively *4 for nA, nB, pA and pB.
+numPositionPoints = 31 # Odd is good so central peak is calculated
+numEnergyPoints = 21 # Effectively *4 for nA, nB, pA and pB.
 
 F = 1f5/eCharge
-dt = 1f-19# 5f-4#1f-11
-maxTime = 1f-0 #5f-6
+dt = 1f-19
+maxTime = 1.5f-0
 
 DD_speed_coeff = 1f-35
-light_speed_coeff = 1f-27
+light_speed_coeff = 1f-26
 
 # Plot parameters
 numPlots = 100
-gifTime = 5 # seconds
+gifTime = 10 # seconds
 # camera=(azimuthal, elevation), azimuthal is left-handed rotation about +ve z
 # cameraTup = (140, 60)
 cameraTup = (60, 40)
@@ -124,10 +124,9 @@ if shouldCalcNew || !isfile(jldFilePath)
         # Dt(pB(t, ϵpB, x)) ~ light_speed_coeff * 1/(2*sqrt(π) * hbar^2 * kbT) * ( DϵϵnB(nB(t, EH, x)) * sqrt(π) * exp(-(2*(ϵpB-EH)*kbT-sigma^2)/(2*kbT^2)) * (1 - erf(-((ϵpB-EH)*kbT-sigma^2)/(sqrt(2)*sigma*kbT))) * (A1*(ϵpB-EH)^3 + A2*(ϵpB-EH)^2 + A3*(ϵpB-EH) + A4)  +  DϵϵnB(nB(t, EH, x)) * exp(-(ϵpB-EH)^2/(2*sigma^2)) * ( (pB(t, ϵpB, x)-2)*(B1*(ϵpB-EH)^2+B2) + B3*(ϵpB-EH)^2 + B4*(ϵpB-EH) + B5) + pB(t, ϵpB, x) * DϵϵnB(nB(t, EH, x)) * sqrt(π) * (erf(-(ϵpB-EH)/(sqrt(2)*sigma))-1) * (C1*(ϵpB-EH)^3 + C2*(ϵpB-EH)) + (pB(t, ϵpB, x) - nB(t, EH, x)) * sqrt(π) * exp(-(2*(ϵpB-EH)*kbT+sigma^2)/(2*kbT^2)) * (1 - erf(-((ϵpB-EH)*kbT-sigma^2)/(sqrt(2)*sigma*kbT))) * (D1*(ϵpB-EH)^3 + D2*(ϵpB-EH)^2 + D3*(ϵpB-EH) + D4)  +  ((pB(t, ϵpB, x) * nB(t, EH, x) - 4*pB(t, ϵpB, x) + 2*nB(t, EH, x))*(E1*(ϵpB-EH)^2 + E2) + (pB(t, ϵpB, x) - nB(t, EH, x)) * (E3*(ϵpB-EH)+E4)) * exp(-(ϵpB-EH)^2/(2*sigma^2))  + pB(t, ϵpB, x) * (nB(t, EH, x)-2) * (F1*(ϵpB-EH)^3 + F2*(ϵpB-EH)) * sqrt(π) * (erf(-(ϵpB-EH)/(sqrt(2)*sigma))-1)    ) , 
         ]
     
-
-    # Choice of 3 initial conditions:
     (posWidth, energyWidth) = (1, 0.4) # (1, 3) (1, 0.4)
     T_eff = 200 # Use an effective temperature to make the transition region of the initial condition wider.
+    # Choice of 3 initial conditions:
 
     # Initial: Gaussian energy
     # initialFunc(ϵ, x, mean) = (normalGaussian(x, 0, posWidth) - normalGaussian(positionRange[1], 0, posWidth)) * (  normalGaussian(ϵ, mean, energyWidth) - min(normalGaussian(energyRangeNA[1], mean, energyWidth), normalGaussian(energyRangeNB[2], mean, energyWidth))  )
@@ -209,11 +208,11 @@ pzmin = min(solp[:,:,:]...)
 pzmax = max(solp[:,:,:]...)
 
 # Show individual plots e.g. [1,2,3,20] or []
-shownPlots = []#[1, 10, 20, 30, 40, 50]
-shouldUseZlims = true # use for Julia's "short-circuit evaluation"
-    
+shownPlots = []#[1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+shouldUseZlims = false # use for Julia's "short-circuit evaluation"
+
 for i in shownPlots
-    if (i <= numPlots)
+    if (i <= lenSolt)
         plotn = surface(solne, solx, transpose(soln[i, :, :]), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)), clims=(nzmin, nzmax), legend = :none)
         shouldUseZlims && zlims!(nzmin, nzmax)
 
@@ -230,7 +229,7 @@ end
 # Option to make gif.
 makeGif = true
 if makeGif
-    anim = @animate for i in 1:lenSolt
+    anim = @animate for i in 1:(lenSolt)
         
         plotn = surface(solne, solx, transpose(soln[i, :, :]), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)), clims=(nzmin, nzmax), legend = :none)
         shouldUseZlims && zlims!(nzmin, nzmax)

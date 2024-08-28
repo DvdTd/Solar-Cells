@@ -27,7 +27,7 @@ positionRange = [-5.0, 5.0] # solar cell about 10cm
 numEnergyPoints = 700
 numPositionPoints = 700
 
-dimension = 1 # accepts 1 or 2
+dimension = 1
 F = np.array([1e4]) # Tress p56, reasonably strong field is 1e5 or 1e6 V/cm
 
 K = [1/4*gamma**(-3), 3*np.pi/8*gamma**(-4), np.pi*gamma**(-5)]

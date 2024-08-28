@@ -26,8 +26,8 @@ numPlots = 100
 energyRange = [-1.5 + Eav, 1.5 + Eav] 
 maxPos = 8.0
 positionRange = [-maxPos, maxPos] 
-numEnergyPoints = 40
-numPositionPoints = 60
+numEnergyPoints = 10#40
+numPositionPoints = 10#60
 
 # gamma = 0.788
 # F = 1f5
@@ -143,7 +143,7 @@ end
 # display(initialPlot)
 
 # Show individual plots e.g. [1,2,3,20] or []
-shownPlots = [80, 90, 99]
+shownPlots = []
 
 zmin = min(soln[:,:,:]...)
 zmax = max(soln[:,:,:]...)

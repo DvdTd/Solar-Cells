@@ -24,41 +24,32 @@ positionRange = [-10, 10]
 numEnergyPoints = 100
 numPositionPoints = 100
 
-# 10^8 gamma, rescaled F
-# dt = 1e-7
-# maxTime = 5e-2
-# F = [1e5/eCharge]
-
-# 10^8 gamma, nanometres
-# positionRange = [-1e-6, 1e-6]
-# dt = 1e-7
-# maxTime = 5e-2
-# F = [-1e5]
-# initialField = f"{np.e}**(-(y * 10**(6))**2)"
-
-# new gamma, nu0, g1
+# Drift
 dt = 2e-39
 maxTime = dt * 1e4
 F = [1e5/eCharge]
 
-# dt = 2.85e-26 # 2.95e-26 NaN after 1 graph. 2.9e-26 has a spike on 2nd graph before NaN
-# maxTime = dt * 1e4
-# F = [0]
+# Still experimenting: Diffusion with new gamma
+# g1 = 1
+# nu0 = 1
+# F = [0]  
+# dt = 1.428e8 
+# maxTime = dt*100000
+# Values tried:
+# maxTime=dt*100: 1.5e8 < dt < 1.8e8 
+# dt*100000: 1.425e8 no change, 1.428e8 spikes but stable?, 1.43e8 spikes no nan,  1.45e8 nan after 8, 1.5e8 nan
+# dt*100000*4: 1.428e8 nan after 8
 
-# Diffusion - seen before gamma was changed to 10^8.
+# Diffusion - seen with different constants.
 # gamma = 0.788
-g1 = 1
-nu0 = 1
-dt = 1e-5
-maxTime = 1e0
-F = [0e-2]  # [2e-2] 
+# g1 = 1
+# nu0 = 1
+# dt = 1e-5
+# maxTime = 1e0
+# F = [0e-2]
 
-dt = 1.5e7
-maxTime = 1.5e12
-# dt = 1.5e7, maxTime = 1.5e14 tried but didn't move
-
-numPlots = 8 # Number of plots, minimum of 1.
-maxGraphsPerRow = 4
+numPlots = 10 # Number of plots, minimum of 1.
+maxGraphsPerRow = 5
 
 taskType = "timeEvo" # Options: timeEvo, longEvo
 plotType = "mesh" # Options: mesh, colour2d
