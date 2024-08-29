@@ -9,7 +9,7 @@ kb = 1.3806f-23
 eCharge = 1.602f-19
 hbar = 1.054571817f-34 / eCharge
 gamma = 1f8 
-nu0 = 1 
+nu0 = 1 # Using these as the true values would just speed up the time scale.
 g1 = 1 
 sigma = 0.13 
 Lambda = 9e-5
@@ -26,28 +26,40 @@ numPlots = 100
 energyRange = [-1.5 + Eav, 1.5 + Eav] 
 maxPos = 8.0
 positionRange = [-maxPos, maxPos] 
-numEnergyPoints = 10#40
-numPositionPoints = 10#60
+numEnergyPoints = 20
+numPositionPoints = 20
 
-# gamma = 0.788
-# F = 1f5
-# dt = 1f-10# 5f-4#1f-11
-# maxTime = 2f-3 #5f-6
+# Drift
+# F = 1f5/eCharge
+# dt = 1f-6# 5f-4#1f-11
+# maxTime = 2f2 #5f-6
 
-# Small F parameters
-# F = 1f-1
+# Diffusion: working. long time good as currently g1 nu0 = 1, so it should actually happen 5e33 times quicker.
+F = 0
+dt = 1f-1
+maxTime = 1e28
+
+# Diffusion, old gamma: working
+# F = 0
 # dt = 1f-1
-# maxTime = 10e3
+# maxTime = 1e3
+# gamma = 0.788
+# K = [1/4*gamma^(-3), 3*π/8*gamma^(-4), π*gamma^(-5)][clamp(d-1, 1, 3)]
+# C = [gamma^(-1), π/2*gamma^(-2), π*gamma^(-3)][clamp(d-1, 1, 3)]
 
-# New gamma
-F = 1f5/eCharge
-dt = 1f-6# 5f-4#1f-11
-maxTime = 2f2 #5f-6
+# Diffusion, old gamma, small field: working
+# F = 5f-2
+# dt = 1f-1
+# maxTime = 1e3
+# gamma = 0.788
+# K = [1/4*gamma^(-3), 3*π/8*gamma^(-4), π*gamma^(-5)][clamp(d-1, 1, 3)]
+# C = [gamma^(-1), π/2*gamma^(-2), π*gamma^(-3)][clamp(d-1, 1, 3)]
+
 
 # camera=(azimuthal, elevation), azimuthal is left-handed rotation about +ve z  
 # cameraTup = (10, 80)
-cameraTup = (70, 50)
-# cameraTup = (25, 50)
+# cameraTup = (70, 50)
+cameraTup = (10, 70)
 
 @parameters t, ϵ, x
 @variables n(..)
@@ -58,11 +70,12 @@ Dx = Differential(x)
 Dxx = Differential(x)^2
 Dϵϵ = Differential(ϵ)^2
 
-shouldCalcNew = true # Gives the option to change the plot parameters without recalculating the solution.
+shouldCalcNew = false # Gives the option to change the plot parameters without recalculating the solution.
 jldFilePath = "/Users/david/Documents/Python/Solar Cells/MethodOfLinesData.jld"
 
 step(x, x0) =  (1+sign(x-x0))/2
-piecewiseE = false
+
+piecewiseE = false # Swaps E_C between piecewise E_H/E_L, and E_H.
 if piecewiseE
     Ec(ϵ) = EH + (EL - EH)*step(ϵ, Eav)
 else
@@ -143,7 +156,7 @@ end
 # display(initialPlot)
 
 # Show individual plots e.g. [1,2,3,20] or []
-shownPlots = []
+shownPlots = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
 zmin = min(soln[:,:,:]...)
 zmax = max(soln[:,:,:]...)
@@ -159,5 +172,5 @@ anim = @animate for i in 1:lenSolt
     end
     zlims!(zmin, zmax)
 end
-display(gif(anim, "MethodOfLines.gif", fps = floor(numPlots/5)))
+display(gif(anim, "MethodOfLinesDDD.gif", fps = floor(numPlots/5)))
 

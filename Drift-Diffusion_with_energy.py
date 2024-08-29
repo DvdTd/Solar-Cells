@@ -37,8 +37,8 @@ F = [1e5/eCharge]
 # maxTime = dt*100000
 # Values tried:
 # maxTime=dt*100: 1.5e8 < dt < 1.8e8 
-# dt*100000: 1.425e8 no change, 1.428e8 spikes but stable?, 1.43e8 spikes no nan,  1.45e8 nan after 8, 1.5e8 nan
-# dt*100000*4: 1.428e8 nan after 8
+# dt*100000: 1.425e8 no change, 1.428e8 spikes but stable?, 1.43e8 spikes no nan,  1.45e8 nan after 8 graphs, 1.5e8 nan
+# dt*100000*4: 1.428e8 nan after 8 graphs
 
 # Diffusion - seen with different constants.
 # gamma = 0.788

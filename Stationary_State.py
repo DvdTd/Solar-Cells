@@ -39,8 +39,7 @@ dPosition = (positionRange[1] - positionRange[0])/numPositionPoints
 
 # Function produces a normalised Gaussian.
 def PositionBC(energy):
-    width = 1
-    return np.e**(-energy**2/2*(width)**(-2))/width*(2*np.pi)**(-1/2)
+    return np.e**(-energy**2/2)
 
 # Set up grid of points.
 mesh = fp.Grid2D(dx=dEnergy, dy=dPosition, nx=numEnergyPoints, ny=numPositionPoints) + ((energyRange[0],), (positionRange[0],))
@@ -61,10 +60,6 @@ n.constrain(PositionBC(x[0:numEnergyPoints]) - PositionBC(x[0]), mesh.facesRight
 # Energy BCs
 n.constrain(0, where=mesh.facesTop)
 n.constrain(0, where=mesh.facesBottom)
-# n.faceGrad.constrain(0, where=mesh.facesTop) # =100000 for 700x700 gives folds
-# n.faceGrad.constrain(0, where=mesh.facesBottom)
-# n.faceGrad.constrain(0, where=mesh.facesLeft)
-# n.faceGrad.constrain(0, where=mesh.facesRight)
 
 solver = fp.LinearLUSolver(tolerance=1e-10, iterations=10)
 # eq.solve(var=n, solver=solver)
@@ -82,12 +77,36 @@ for i in range(1):
     ax.set_box_aspect(aspect=None, zoom=0.9)
     ax.set(xlabel="Energy", ylabel="Position", zlabel="Electron density", title=f"")
     
+
+
     # Show position dependence is linear.
     fig = plt.figure(figsize=(7,7))
     plt.plot(np.array(mesh.y).reshape(numEnergyPoints, numPositionPoints)[:,1], np.array(n).reshape(numEnergyPoints, numPositionPoints).T[:,350])
-    plt.xlabel("Position")
+    plt.xlabel("Position (energy ~ 0)")
     plt.ylabel("Electron density")
 
-plt.show()
+    fig = plt.figure(figsize=(7,7))
+    plt.plot(np.array(mesh.y).reshape(numEnergyPoints, numPositionPoints)[:,1], np.array(n).reshape(numEnergyPoints, numPositionPoints).T[:,175])
+    plt.xlabel("Position (energy ~ -2.5)")
+    plt.ylabel("Electron density")
 
+    # Show energy dependence is Gaussian.
+    fig = plt.figure(figsize=(7,7))
+    plotX = np.array(mesh.x).reshape(numEnergyPoints, numPositionPoints)[1,:]
+    plotY = np.array(n).reshape(numEnergyPoints, numPositionPoints).T[350,:]
+    plt.plot(plotX, plotY)
+    plt.xlabel("Energy (position ~ 0)")
+    plt.ylabel("Electron density")
+
+    fig = plt.figure(figsize=(7,7))
+    plt.plot(plotX, np.log(plotY))
+    plt.xlabel("Energy (position ~ 0)")
+    plt.ylabel("Log Electron density")
+
+    fig = plt.figure(figsize=(7,7))
+    plt.plot(np.log(plotX[351:]), np.log(np.abs(np.log(plotY)[351:])))
+    plt.xlabel("Log Energy (position ~ 0)")
+    plt.ylabel("Log(Log Electron density + 9)")
+
+plt.show()
 

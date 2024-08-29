@@ -11,7 +11,7 @@ To find the occupation probability in a solar cell in terms of time, position an
 
 ```Using_Coupled_MethodOfLines.jl``` implements the coupled equations including the differential light term. This program writes the output data into ```CoupledMethodOfLinesData.jld```. 
 
-All MethodOfLines programs animate their output in ```MethodOfLines.gif```.
+```Using_DD_MethodOfLines.jl``` animates its output in ```MethodOfLinesDD.gif``` and all other MethodOfLines programs animate their output in ```MethodOfLines.gif```.
 
 
 
