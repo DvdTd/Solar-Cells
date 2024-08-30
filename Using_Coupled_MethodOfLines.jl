@@ -96,7 +96,7 @@ DϵϵpA = Differential(ϵpA)^2
 DϵpB = Differential(ϵpB)
 DϵϵpB = Differential(ϵpB)^2
 
-shouldCalcNew = true # Gives the option to change the plot parameters without recalculating the solution.
+shouldCalcNew = false # Gives the option to change the plot parameters without recalculating the solution.
 jldFilePath = "/Users/david/Documents/Python/Solar Cells/CoupledMethodOfLinesData.jld"
 
 
@@ -208,11 +208,14 @@ pzmin = min(solp[:,:,:]...)
 pzmax = max(solp[:,:,:]...)
 
 # Show individual plots e.g. [1,2,3,20] or []
-shownPlots = []#[1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+shownPlots = [1, 50, 70]#[1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 shouldUseZlims = false # use for Julia's "short-circuit evaluation"
 
-for i in shownPlots
-    if (i <= lenSolt)
+shownIntegPlots = shownPlots#[1,50,80]
+method = TrapezoidalRule()
+
+for i in 1:(lenSolt)
+    if i in shownPlots
         plotn = surface(solne, solx, transpose(soln[i, :, :]), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)), clims=(nzmin, nzmax), legend = :none)
         shouldUseZlims && zlims!(nzmin, nzmax)
 
@@ -224,7 +227,31 @@ for i in shownPlots
         title!("Time = " * Printf.format(Printf.Format("%.2e"),(i-1)/lenSolt * maxTime) * "s")
         display(plotnp)
     end
+
+    # Make plots integrating along each axis.
+    if i in shownIntegPlots
+        titleStr = "Time = " * Printf.format(Printf.Format("%.2e"),(i-1)/lenSolt * maxTime) * "s"
+
+        energyProblemN = SampledIntegralProblem(soln[i, :, :], solne; dim = 1)
+        integsEn = solve(energyProblemN, method)
+        plotne = Plots.plot(solx, integsEn, xlabel="Position", ylabel="Energy integral", title=titleStr, legend = false)
+        energyProblemP = SampledIntegralProblem(solp[i, :, :], solpe; dim = 1)
+        integsEp = solve(energyProblemP, method)
+        plotpe = Plots.plot(solx, integsEp, xlabel="Position", ylabel="Energy integral", title=titleStr, legend = false)
+        plotnpe = Plots.plot(plotne, plotpe, layout = (1,2))
+        display(plotnpe)
+
+        positionProblemN = SampledIntegralProblem(soln[i, :, :], solx; dim = 2)
+        integsEn = solve(positionProblemN, method)
+        plotnx = Plots.plot(solne, integsEn, xlabel="Energy", ylabel="Position integral", title=titleStr)
+        positionProblemP = SampledIntegralProblem(solp[i, :, :], solx; dim = 2)
+        integsEp = solve(positionProblemP, method)
+        plotpx = Plots.plot(solpe, integsEp, xlabel="Energy", ylabel="Position integral", title=titleStr, legend = false)
+        plotnpx = Plots.plot(plotnx, plotpx, layout = (1,2), legend = false)
+        display(plotnpx)
+    end
 end
+
 
 # Option to make gif.
 makeGif = true

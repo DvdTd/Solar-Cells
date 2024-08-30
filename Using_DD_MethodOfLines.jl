@@ -2,7 +2,7 @@
 Using MethodOfLines with the drift-diffusion equations with Ec=0 in Ebar and the Gaussian (around line 64, line 74/75)
 """
 
-using MethodOfLines, ModelingToolkit, OrdinaryDiffEq, DomainSets, Plots, Printf, JLD
+using MethodOfLines, ModelingToolkit, OrdinaryDiffEq, DomainSets, Plots, Printf, JLD, Integrals
 
 d = 2 # dimension
 kb = 1.3806f-23
@@ -26,8 +26,8 @@ numPlots = 100
 energyRange = [-1.5 + Eav, 1.5 + Eav] 
 maxPos = 8.0
 positionRange = [-maxPos, maxPos] 
-numEnergyPoints = 20
-numPositionPoints = 20
+numEnergyPoints = 30
+numPositionPoints = 30
 
 # Drift
 # F = 1f5/eCharge
@@ -47,15 +47,6 @@ maxTime = 1e28
 # K = [1/4*gamma^(-3), 3*π/8*gamma^(-4), π*gamma^(-5)][clamp(d-1, 1, 3)]
 # C = [gamma^(-1), π/2*gamma^(-2), π*gamma^(-3)][clamp(d-1, 1, 3)]
 
-# Diffusion, old gamma, small field: working
-# F = 5f-2
-# dt = 1f-1
-# maxTime = 1e3
-# gamma = 0.788
-# K = [1/4*gamma^(-3), 3*π/8*gamma^(-4), π*gamma^(-5)][clamp(d-1, 1, 3)]
-# C = [gamma^(-1), π/2*gamma^(-2), π*gamma^(-3)][clamp(d-1, 1, 3)]
-
-
 # camera=(azimuthal, elevation), azimuthal is left-handed rotation about +ve z  
 # cameraTup = (10, 80)
 # cameraTup = (70, 50)
@@ -70,7 +61,7 @@ Dx = Differential(x)
 Dxx = Differential(x)^2
 Dϵϵ = Differential(ϵ)^2
 
-shouldCalcNew = false # Gives the option to change the plot parameters without recalculating the solution.
+shouldCalcNew = true # Gives the option to change the plot parameters without recalculating the solution.
 jldFilePath = "/Users/david/Documents/Python/Solar Cells/MethodOfLinesData.jld"
 
 step(x, x0) =  (1+sign(x-x0))/2
@@ -158,19 +149,39 @@ end
 # Show individual plots e.g. [1,2,3,20] or []
 shownPlots = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
+shownIntegPlots = []#[1,50,100]#[1,20,40,60,80,100]
+method = TrapezoidalRule()
+
 zmin = min(soln[:,:,:]...)
 zmax = max(soln[:,:,:]...)
 
 # Make gif.
 anim = @animate for i in 1:lenSolt
+    titleStr = "Time = " * Printf.format(Printf.Format("%.2e"),(i-1)/lenSolt * maxTime) * "s"
     plot = surface(sole, solx, transpose(soln[i, :, :]), xlabel="Energy", ylabel="Position", zlabel="n", camera=cameraTup, color=reverse(cgrad(:RdYlBu_11)), clims=(zmin, zmax))
-    title!("Time = " * Printf.format(Printf.Format("%.2e"),(i-1)/lenSolt * maxTime) * "s")
+    title!(titleStr)
 
     # Plot individual plots.
     if i in shownPlots
         display(plot)
     end
+
+    # Make plots integrating along each axis.
+    if i in shownIntegPlots
+        energyProblem = SampledIntegralProblem(soln[i, :, :], sole; dim = 1)
+        integsE = solve(energyProblem, method)
+        display(Plots.plot(solx, integsE, xlabel="Position", ylabel="Energy integral", title=titleStr))
+        
+        positionProblem = SampledIntegralProblem(soln[i, :, :], solx; dim = 2)
+        integsX = solve(positionProblem, method)
+        display(Plots.plot(sole, integsX, xlabel="Energy", ylabel="Position integral", title=titleStr))
+    end
+
     zlims!(zmin, zmax)
 end
-display(gif(anim, "MethodOfLinesDDD.gif", fps = floor(numPlots/5)))
+display(gif(anim, "MethodOfLinesDD.gif", fps = floor(numPlots/5)))
+
+
+
+
 
