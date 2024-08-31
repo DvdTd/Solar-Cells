@@ -106,7 +106,7 @@ for i in range(1):
     fig = plt.figure(figsize=(7,7))
     plt.plot(np.log(plotX[351:]), np.log(np.abs(np.log(plotY)[351:])))
     plt.xlabel("Log Energy (position ~ 0)")
-    plt.ylabel("Log(Log Electron density + 9)")
+    plt.ylabel("Log(Log Electron density)")
 
 plt.show()
 
