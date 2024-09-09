@@ -5,7 +5,7 @@ Searching online says the following warning isn't an issue:
 Warning: The system contains interface boundaries, which are not compatible with system transformation. The system will not be transformed. Please post an issue if you need this feature.
 """
 
-using MethodOfLines, ModelingToolkit, OrdinaryDiffEq, DomainSets, Plots, Printf, JLD
+using MethodOfLines, ModelingToolkit, OrdinaryDiffEq, DomainSets, Plots, Printf, JLD, Integrals
 import SpecialFunctions: erf
 
 d = 2 # dimension
